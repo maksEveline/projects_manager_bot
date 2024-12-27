@@ -1,20 +1,21 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 
-from handlers.user import user_commands
-
-from data.database import initialize_db
-from config import TOKEN, DB_PATH
+from handlers.user import start
+from callbacks.user import my_projects
+from data.database import db
+from config import TOKEN
 
 
 async def main():
-    await initialize_db(DB_PATH)
+    await db.initialize()
 
     bot = Bot(TOKEN)
     dp = Dispatcher()
 
     dp.include_routers(
-        user_commands.router,
+        start.router,
+        my_projects.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)
