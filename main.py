@@ -2,7 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from handlers.user import start
-from callbacks.user import my_projects
+from callbacks.user import my_projects, add_project, cancel_method
 from data.database import db
 from config import TOKEN
 
@@ -16,6 +16,8 @@ async def main():
     dp.include_routers(
         start.router,
         my_projects.router,
+        add_project.router,
+        cancel_method.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

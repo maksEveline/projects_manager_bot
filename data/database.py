@@ -58,25 +58,29 @@ class Database:
             print(f"Ошибка при добавлении пользователя: {e}")
             return False
 
-    async def add_project(self, name: str, user_id: int) -> int | None:
+    async def add_project(self, name: str, user_id: int) -> bool:
         """
         Добавляет новый проект в базу данных.
 
         :param name: Название проекта
         :param user_id: ID пользователя, создающего проект
-        :return: ID созданного проекта или None в случае ошибки
+        :return: True если проект успешно добавлен, False если проект с таким именем уже существует
         """
         try:
-            cursor = await self.db.execute(
-                "INSERT INTO project (name, user_id) VALUES (?, ?) RETURNING project_id",
-                (name, user_id),
+            async with self.db.execute(
+                "SELECT 1 FROM project WHERE name = ? AND user_id = ?", (name, user_id)
+            ) as cursor:
+                if await cursor.fetchone() is not None:
+                    return False
+
+            await self.db.execute(
+                "INSERT INTO project (name, user_id) VALUES (?, ?)", (name, user_id)
             )
-            result = await cursor.fetchone()
             await self.db.commit()
-            return result[0] if result else None
+            return True
         except Exception as e:
             print(f"Ошибка при создании проекта: {e}")
-            return None
+            return False
 
     async def get_user_projects(self, user_id: int) -> list[dict] | None:
         """

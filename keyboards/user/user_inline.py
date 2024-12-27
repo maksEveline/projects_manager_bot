@@ -39,3 +39,9 @@ async def get_back_to_main_menu() -> InlineKeyboardMarkup:
     kb = [[InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")]]
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
     return keyboard
+
+
+async def get_cancel_menu() -> InlineKeyboardMarkup:
+    kb = [[InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_method")]]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+    return keyboard
