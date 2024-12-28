@@ -28,6 +28,24 @@ class Database:
                 )
             """
             )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS chat (
+                    project_id INTEGER,
+                    chat_id INTEGER,
+                    name TEXT
+                )
+            """
+            )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS channel (
+                    project_id INTEGER,
+                    channel_id INTEGER,
+                    name TEXT
+                )
+            """
+            )
             await self.db.commit()
         except Exception as e:
             print(f"Ошибка при инициализации базы данных: {e}")
@@ -97,6 +115,84 @@ class Database:
                 return [{"project_id": row[0], "name": row[1]} for row in projects]
         except Exception as e:
             print(f"Ошибка при получении проектов пользователя: {e}")
+            return None
+
+    async def get_project_chats_and_channels(
+        self, project_id: int
+    ) -> list[dict] | None:
+        """
+        Получает все чаты и каналы проекта.
+
+        :param project_id: ID проекта
+        :return: Список словарей с информацией о чатах и каналах или None в случае ошибки
+        """
+        try:
+            result = []
+
+            async with self.db.execute(
+                "SELECT chat_id, name FROM chat WHERE project_id = ?", (project_id,)
+            ) as cursor:
+                chats = await cursor.fetchall()
+                for row in chats:
+                    result.append({"id": row[0], "name": row[1], "type": "chat"})
+
+            async with self.db.execute(
+                "SELECT channel_id, name FROM channel WHERE project_id = ?",
+                (project_id,),
+            ) as cursor:
+                channels = await cursor.fetchall()
+                for row in channels:
+                    result.append({"id": row[0], "name": row[1], "type": "channel"})
+
+            return result
+        except Exception as e:
+            print(f"Ошибка при получении чатов и каналов проекта: {e}")
+            return None
+
+    async def delete_project(self, project_id: int) -> bool:
+        """
+        Удаляет проект и все связанные с ним чаты и каналы.
+
+        :param project_id: ID проекта для удаления
+        :return: True если удаление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "DELETE FROM chat WHERE project_id = ?", (project_id,)
+            )
+
+            await self.db.execute(
+                "DELETE FROM channel WHERE project_id = ?", (project_id,)
+            )
+
+            await self.db.execute(
+                "DELETE FROM project WHERE project_id = ?", (project_id,)
+            )
+
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при удалении проекта: {e}")
+            return False
+
+    async def get_project(self, project_id: int) -> dict | None:
+        """
+        Получает информацию о проекте по его ID.
+
+        :param project_id: ID проекта
+        :return: Словарь с информацией о проекте или None в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                "SELECT project_id, name, user_id FROM project WHERE project_id = ?",
+                (project_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return {"project_id": row[0], "name": row[1], "user_id": row[2]}
+                return None
+        except Exception as e:
+            print(f"Ошибка при получении информации о проекте: {e}")
             return None
 
 
