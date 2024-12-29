@@ -1,6 +1,5 @@
 from aiogram import Router, F, Bot
 from aiogram.types import (
-    Message,
     CallbackQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
@@ -40,6 +39,13 @@ async def open_project(callback: CallbackQuery, bot: Bot):
                 ]
             )
 
+    kb.append(
+        [
+            InlineKeyboardButton(
+                text="➕ Добавить", callback_data=f"add_to_project_{project_id}"
+            )
+        ]
+    )
     kb.append(
         [
             InlineKeyboardButton(

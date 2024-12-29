@@ -8,6 +8,7 @@ from callbacks.user import (
     cancel_method,
     open_project,
     delete_project,
+    add_to_project,
 )
 from data.database import db
 from config import TOKEN
@@ -26,6 +27,7 @@ async def main():
         cancel_method.router,
         open_project.router,
         delete_project.router,
+        add_to_project.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

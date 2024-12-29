@@ -35,6 +35,14 @@ async def get_my_projects_menu(projects: list[dict]) -> InlineKeyboardMarkup:
     return keyboard
 
 
+async def get_back_to_project_menu(project_id: int) -> InlineKeyboardMarkup:
+    kb = [
+        [InlineKeyboardButton(text="🔙 Назад", callback_data=f"project_{project_id}")]
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+    return keyboard
+
+
 async def get_back_to_main_menu() -> InlineKeyboardMarkup:
     kb = [[InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")]]
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
