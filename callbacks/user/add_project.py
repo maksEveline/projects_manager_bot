@@ -37,6 +37,16 @@ async def add_project_process_name(message: Message, state: FSMContext, bot: Bot
     is_added = await db.add_project(project_name, message.from_user.id)
 
     if is_added:
+        project_id = await db.get_projectid_by_projectname(
+            project_name, message.from_user.id
+        )
+        await db.add_rate(
+            project_id=project_id,
+            name="Базовый",
+            price=5,
+            duration=30,
+            description="Описание тарифа",
+        )
         await bot.edit_message_text(
             text="🎉 Проект успешно добавлен",
             reply_markup=await get_back_to_main_menu(),

@@ -5,16 +5,21 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 
+from aiogram.fsm.context import FSMContext
+
 from data.database import db
 
 router = Router()
 
 
 @router.callback_query(F.data.startswith("project_"))
-async def open_project(callback: CallbackQuery, bot: Bot):
+async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    await state.clear()
     project_id = callback.data.split("project_")[-1]
     project = await db.get_project_chats_and_channels(project_id)
-    print(project)
+    bot_info = await bot.get_me()
+    bot_username = bot_info.username
+    # print(project)
 
     kb = []
 
@@ -24,17 +29,16 @@ async def open_project(callback: CallbackQuery, bot: Bot):
                 [
                     InlineKeyboardButton(
                         text=f"{item['name']} (Chat)",
-                        callback_data=f"chat_{item['id']}",
+                        callback_data=f"item_chat_{item['id']}",
                     )
                 ]
             )
         else:
-
             kb.append(
                 [
                     InlineKeyboardButton(
                         text=f"{item['name']} (Channel)",
-                        callback_data=f"channel_{item['id']}",
+                        callback_data=f"item_channel_{item['id']}",
                     )
                 ]
             )
@@ -42,9 +46,13 @@ async def open_project(callback: CallbackQuery, bot: Bot):
     kb.append(
         [
             InlineKeyboardButton(
-                text="➕ Добавить", callback_data=f"add_to_project_{project_id}"
+                text="➕ Добавить чат/канал",
+                callback_data=f"add_to_project_{project_id}",
             )
         ]
+    )
+    kb.append(
+        [InlineKeyboardButton(text="🔱 Тарифы", callback_data=f"rates_{project_id}")]
     )
     kb.append(
         [
@@ -57,9 +65,11 @@ async def open_project(callback: CallbackQuery, bot: Bot):
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
 
+    msg_text = f"<b>🌐 Выберите чат или канал</b>\n\n🔗Ссылка на покупку:\n<code>https://t.me/{bot_username}?start=project_{project_id}</code>"
     await bot.edit_message_text(
-        text="🌐 Выберите чат или канал",
+        text=msg_text,
         chat_id=callback.message.chat.id,
         message_id=callback.message.message_id,
         reply_markup=keyboard,
+        parse_mode="HTML",
     )

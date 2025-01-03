@@ -2,8 +2,6 @@ from aiogram import Router, F, Bot
 from aiogram.types import (
     Message,
     CallbackQuery,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
 )
 
 from aiogram.fsm.context import FSMContext
@@ -39,11 +37,21 @@ async def add_to_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
         parse_mode="HTML",
     )
 
+    await state.update_data(
+        {"project_id": project_id, "msg_id": callback.message.message_id}
+    )
     await state.set_state(AddToProject.waiting_for_message)
 
 
 @router.message(AddToProject.waiting_for_message)
-async def process_message(message: Message, state: FSMContext):
+async def process_message(message: Message, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    project_id = data.get("project_id")
+    msg_text = message.text
+
+    await bot.delete_message(message.chat.id, message.message_id)
+
+    # канал
     try:
         # Проверяем, если сообщение переслано из канала
         is_channel = message.forward_from_chat.type
@@ -55,66 +63,126 @@ async def process_message(message: Message, state: FSMContext):
                 bot_member = await message.bot.get_chat_member(
                     forwarded_from, message.bot.id
                 )
-                if bot_member.status in ("administrator", "member"):
+                if bot_member.status == "administrator":
                     # Проверяем, что канал закрытый
                     chat_info = await message.bot.get_chat(forwarded_from)
                     if chat_info.username:
-                        await message.answer(
-                            "❌ Канал должен быть закрытым. Пожалуйста, закройте канал и попробуйте снова."
+                        await bot.edit_message_text(
+                            text="❌ Канал должен быть закрытым. Пожалуйста, закройте канал и попробуйте снова.",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
                         )
+                        await state.clear()
                         return
 
-                    # Создаем пригласительную ссылку
                     invite_link = await message.bot.create_chat_invite_link(
-                        forwarded_from
+                        chat_id=forwarded_from, creates_join_request=True
                     )
-                    await message.answer(
-                        f"✅ Бот успешно добавлен в закрытый канал!\nВот ваша пригласительная ссылка: {invite_link.invite_link}"
+                    is_added = await db.add_channel(
+                        project_id=project_id,
+                        channel_id=forwarded_from,
+                        name=message.forward_from_chat.title,
+                        link=invite_link.invite_link,
                     )
+                    if is_added:
+                        await bot.edit_message_text(
+                            text=f"✅ Бот успешно добавлен в закрытый канал!\nВот ваша пригласительная ссылка: {invite_link.invite_link}",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
+                        )
+                    else:
+                        await bot.edit_message_text(
+                            text="❌ Ошибка, такой канал уже добавлен.",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
+                        )
                 else:
-                    await message.answer(
-                        "❌ Бот не добавлен в канал. Добавьте бота и повторите."
+                    await bot.edit_message_text(
+                        text="❌ Бот не добавлен в канал. Добавьте бота и повторите.",
+                        chat_id=message.chat.id,
+                        message_id=data.get("msg_id"),
+                        reply_markup=await get_back_to_project_menu(project_id),
                     )
             except Exception as e:
-                await message.answer(
-                    f"❌ Бот не добавлен в канал или произошла ошибка: {e}"
+                await bot.edit_message_text(
+                    text=f"❌ Бот не добавлен в канал или произошла ошибка: {e}",
+                    chat_id=message.chat.id,
+                    message_id=data.get("msg_id"),
+                    reply_markup=await get_back_to_project_menu(project_id),
                 )
+            await state.clear()
             return
 
+    # группа
     except:
-        msg_text = message.text
         try:
             chat_id = int(msg_text)
 
             # Проверяем, добавлен ли бот в группу
             try:
                 bot_member = await message.bot.get_chat_member(chat_id, message.bot.id)
-                if bot_member.status in ("administrator", "member"):
+                if bot_member.status == "administrator":
                     # Проверяем, что группа закрытая
                     chat_info = await message.bot.get_chat(chat_id)
                     if chat_info.username:
-                        await message.answer(
-                            "❌ Группа должна быть закрытой. Пожалуйста, закройте группу и попробуйте снова."
+                        await bot.edit_message_text(
+                            text="❌ Группа должна быть закрытой. Пожалуйста, закройте группу и попробуйте снова.",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
                         )
+                        await state.clear()
                         return
 
-                    # Создаем пригласительную ссылку
-                    invite_link = await message.bot.create_chat_invite_link(chat_id)
-                    await message.answer(
-                        f"✅ Бот успешно добавлен в закрытую группу!\nВот ваша пригласительная ссылка: {invite_link.invite_link}"
+                    invite_link = await message.bot.create_chat_invite_link(
+                        chat_id=chat_id, creates_join_request=True
                     )
+                    is_added = await db.add_chat(
+                        project_id=project_id,
+                        chat_id=chat_id,
+                        name=message.forward_from_chat.title,
+                        link=invite_link.invite_link,
+                    )
+                    if is_added:
+                        await bot.edit_message_text(
+                            text=f"✅ Бот успешно добавлен в закрытую группу!\nВот ваша пригласительная ссылка: {invite_link.invite_link}",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
+                        )
+                    else:
+                        await bot.edit_message_text(
+                            text="❌ Ошибка, такой группа уже добавлена.",
+                            chat_id=message.chat.id,
+                            message_id=data.get("msg_id"),
+                            reply_markup=await get_back_to_project_menu(project_id),
+                        )
                 else:
-                    await message.answer(
-                        "❌ Бот не добавлен в группу. Добавьте бота и повторите."
+                    await bot.edit_message_text(
+                        text="❌ Бот не добавлен в группу. Добавьте бота и повторите.",
+                        chat_id=message.chat.id,
+                        message_id=data.get("msg_id"),
+                        reply_markup=await get_back_to_project_menu(project_id),
                     )
             except Exception as e:
-                await message.answer(
-                    f"❌ Бот не добавлен в группу или произошла ошибка: {e}"
+                await bot.edit_message_text(
+                    text=f"❌ Бот не добавлен в группу или произошла ошибка: {e}",
+                    chat_id=message.chat.id,
+                    message_id=data.get("msg_id"),
+                    reply_markup=await get_back_to_project_menu(project_id),
                 )
+            await state.clear()
             return
 
         except ValueError:
-            await message.answer(
-                "❌ Пожалуйста, отправьте корректный идентификатор чата"
+            await bot.edit_message_text(
+                text="❌ Пожалуйста, отправьте корректный идентификатор чата",
+                chat_id=message.chat.id,
+                message_id=data.get("msg_id"),
+                reply_markup=await get_back_to_project_menu(project_id),
             )
+            await state.clear()
             return
