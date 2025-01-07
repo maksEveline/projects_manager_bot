@@ -29,7 +29,12 @@ router = Router()
 @router.message(F.text == "/start")
 async def start_func(msg: Message, bot: Bot):
     user_id = msg.from_user.id
-    await db.add_user_if_not_exists(user_id)
+    first_name = msg.from_user.first_name
+    username = msg.from_user.username
+    if username is None:
+        username = "Unknown"
+
+    await db.add_user_if_not_exists(user_id, first_name, username)
 
     await msg.answer(
         text=f"👋 Привет, <b>{msg.from_user.full_name}</b>",

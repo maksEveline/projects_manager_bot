@@ -18,6 +18,10 @@ from callbacks.user import (
     open_item,
     open_project_rates,
     open_rate_settings,
+    add_rate,
+    topup_balance,
+    stats_project,
+    my_purchases,
 )
 from data.database import db
 from config import TOKEN
@@ -46,6 +50,10 @@ async def main():
         open_project_rates.router,
         open_rate_settings.router,
         delete_rate.router,
+        add_rate.router,
+        topup_balance.router,
+        stats_project.router,
+        my_purchases.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

@@ -8,6 +8,7 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 
 from data.database import db
+from config import DURATION_TYPES
 
 router = Router()
 
@@ -20,10 +21,11 @@ async def open_project_rates(callback: CallbackQuery, bot: Bot, state: FSMContex
     kb = []
 
     for rate in rates:
+        dur_type = DURATION_TYPES[rate["duration_type"]]
         kb.append(
             [
                 InlineKeyboardButton(
-                    text=f"{rate['name']} - {rate['duration']} дней({rate['price']}$)",
+                    text=f"{rate['name']} - {rate['duration']} {dur_type}({rate['price']}$)",
                     callback_data=f"rate_settings_{rate['rate_id']}",
                 )
             ]

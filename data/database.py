@@ -16,7 +16,9 @@ class Database:
                 """
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
-                    balance FLOAT DEFAULT 0
+                    balance FLOAT DEFAULT 0,
+                    first_name TEXT,
+                    username TEXT
                 )
             """
             )
@@ -25,9 +27,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS project (
                     project_id INTEGER PRIMARY KEY,
                     name TEXT,
-                    user_id INTEGER,
-                    price INTEGER,
-                    duration INTEGER
+                    user_id INTEGER
                 )
             """
             )
@@ -60,15 +60,31 @@ class Database:
                     name TEXT,
                     price INTEGER,
                     duration INTEGER,
+                    duration_type TEXT DEFAULT 'days',
                     description TEXT
                 )
             """
             )
+            # покупки
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS purchases (
+                    user_id INTEGER,
+                    project_id INTEGER,
+                    rate_id INTEGER,
+                    date TEXT
+                )
+            """
+            )
             await self.db.commit()
+
+            print("База данных инициализирована")
         except Exception as e:
             print(f"Ошибка при инициализации базы данных: {e}")
 
-    async def add_user_if_not_exists(self, user_id: int) -> bool:
+    async def add_user_if_not_exists(
+        self, user_id: int, first_name: str, username: str
+    ) -> bool:
         """
         Добавляет user_id в таблицу users, если его там нет.
         Возвращает True, если добавление прошло успешно, иначе False.
@@ -84,7 +100,8 @@ class Database:
 
             if result is None:
                 await self.db.execute(
-                    "INSERT INTO users (user_id) VALUES (?)", (user_id,)
+                    "INSERT INTO users (user_id, first_name, username) VALUES (?, ?, ?)",
+                    (user_id, first_name, username),
                 )
                 await self.db.commit()
                 return True
@@ -110,8 +127,8 @@ class Database:
                     return False
 
             await self.db.execute(
-                "INSERT INTO project (name, user_id, price, duration) VALUES (?, ?, ?, ?)",
-                (name, user_id, 5, 30),  # default price = 5$, duration = 30 days
+                "INSERT INTO project (name, user_id) VALUES (?, ?)",
+                (name, user_id),
             )
             await self.db.commit()
             return True
@@ -128,19 +145,11 @@ class Database:
         """
         try:
             async with self.db.execute(
-                "SELECT project_id, name, price, duration FROM project WHERE user_id = ?",
+                "SELECT project_id, name FROM project WHERE user_id = ?",
                 (user_id,),
             ) as cursor:
                 projects = await cursor.fetchall()
-                return [
-                    {
-                        "project_id": row[0],
-                        "name": row[1],
-                        "price": row[2],
-                        "duration": row[3],
-                    }
-                    for row in projects
-                ]
+                return [{"project_id": row[0], "name": row[1]} for row in projects]
         except Exception as e:
             print(f"Ошибка при получении проектов пользователя: {e}")
             return None
@@ -231,18 +240,12 @@ class Database:
         """
         try:
             async with self.db.execute(
-                "SELECT project_id, name, user_id, price, duration FROM project WHERE project_id = ?",
+                "SELECT project_id, name, user_id FROM project WHERE project_id = ?",
                 (project_id,),
             ) as cursor:
                 row = await cursor.fetchone()
                 if row:
-                    return {
-                        "project_id": row[0],
-                        "name": row[1],
-                        "user_id": row[2],
-                        "price": row[3],
-                        "duration": row[4],
-                    }
+                    return {"project_id": row[0], "name": row[1], "user_id": row[2]}
                 return None
         except Exception as e:
             print(f"Ошибка при получении информации о проекте: {e}")
@@ -346,18 +349,21 @@ class Database:
             print(f"Ошибка при обновлении цены тарифа: {e}")
             return False
 
-    async def update_rate_duration(self, rate_id: int, new_duration: int) -> bool:
+    async def update_rate_duration(
+        self, rate_id: int, new_duration: int, duration_type: str
+    ) -> bool:
         """
         Обновляет продолжительность тарифа.
 
         :param rate_id: ID тарифа
-        :param new_duration: Новая продолжительность тарифа (в днях)
+        :param new_duration: Новая продолжительность тарифа
+        :param duration_type: Тип длительности ('days' или 'hours')
         :return: True если обновление прошло успешно, False в случае ошибки
         """
         try:
             await self.db.execute(
-                "UPDATE rate SET duration = ? WHERE rate_id = ?",
-                (new_duration, rate_id),
+                "UPDATE rate SET duration = ?, duration_type = ? WHERE rate_id = ?",
+                (new_duration, duration_type, rate_id),
             )
             await self.db.commit()
             return True
@@ -436,7 +442,13 @@ class Database:
             return None
 
     async def add_rate(
-        self, project_id: int, name: str, price: int, duration: int, description: str
+        self,
+        project_id: int,
+        name: str,
+        price: int,
+        duration: int,
+        description: str,
+        duration_type: str = "days",
     ) -> bool:
         """
         Добавляет новый тариф в таблицу rate.
@@ -444,8 +456,9 @@ class Database:
         :param project_id: ID проекта
         :param name: Название тарифа
         :param price: Цена тарифа
-        :param duration: Продолжительность тарифа (в днях)
+        :param duration: Продолжительность тарифа
         :param description: Описание тарифа
+        :param duration_type: Тип длительности (days, months, years), по умолчанию days
         :return: True если тариф успешно добавлен, False в случае ошибки
         """
         try:
@@ -458,10 +471,10 @@ class Database:
 
             await self.db.execute(
                 """
-                INSERT INTO rate (project_id, name, price, duration, description)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO rate (project_id, name, price, duration, description, duration_type)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (project_id, name, price, duration, description),
+                (project_id, name, price, duration, description, duration_type),
             )
             await self.db.commit()
             return True
@@ -500,7 +513,7 @@ class Database:
         try:
             async with self.db.execute(
                 """
-                SELECT rate_id, name, price, duration, description 
+                SELECT rate_id, name, price, duration, description, duration_type
                 FROM rate 
                 WHERE project_id = ?
                 """,
@@ -514,6 +527,7 @@ class Database:
                         "price": row[2],
                         "duration": row[3],
                         "description": row[4],
+                        "duration_type": row[5],
                     }
                     for row in rates
                 ]
@@ -531,7 +545,7 @@ class Database:
         try:
             async with self.db.execute(
                 """
-                SELECT rate_id, project_id, name, price, duration, description 
+                SELECT rate_id, project_id, name, price, duration, description, duration_type
                 FROM rate 
                 WHERE rate_id = ?
                 """,
@@ -546,6 +560,7 @@ class Database:
                         "price": row[3],
                         "duration": row[4],
                         "description": row[5],
+                        "duration_type": row[6],
                     }
                 return None
         except Exception as e:
@@ -566,6 +581,95 @@ class Database:
         except Exception as e:
             print(f"Ошибка при удалении тарифа: {e}")
             return False
+
+    async def update_user_balance(self, user_id: int, amount: float) -> bool:
+        """
+        Обновляет баланс пользователя, добавляя указанную сумму к текущему балансу.
+
+        :param user_id: ID пользователя
+        :param amount: Сумма для добавления (может быть отрицательной для уменьшения баланса)
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE users SET balance = balance + ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении баланса пользователя: {e}")
+            return False
+
+    async def get_purchases_by_rate(self, rate_id: int) -> list[dict] | None:
+        """
+        Получает список покупок для конкретного тарифа.
+
+        :param rate_id: ID тарифа
+        :return: Список словарей с информацией о покупках или None в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                """
+                SELECT p.user_id, p.project_id, p.rate_id, p.date, u.first_name, u.username
+                FROM purchases p
+                JOIN users u ON p.user_id = u.user_id
+                WHERE p.rate_id = ?
+                """,
+                (rate_id,),
+            ) as cursor:
+                purchases = await cursor.fetchall()
+                return [
+                    {
+                        "user_id": row[0],
+                        "project_id": row[1],
+                        "rate_id": row[2],
+                        "date": row[3],
+                        "first_name": row[4],
+                        "username": row[5],
+                    }
+                    for row in purchases
+                ]
+        except Exception as e:
+            print(f"Ошибка при получении списка покупок: {e}")
+            return None
+
+    async def get_user_purchases(self, user_id: int) -> list[dict] | None:
+        """
+        Получает историю покупок пользователя.
+
+        :param user_id: ID пользователя
+        :return: Список словарей с информацией о покупках или None в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                """
+                SELECT 
+                    pu.date,
+                    p.name as project_name,
+                    r.name as rate_name,
+                    r.price
+                FROM purchases pu
+                JOIN project p ON pu.project_id = p.project_id
+                JOIN rate r ON pu.rate_id = r.rate_id
+                WHERE pu.user_id = ?
+                ORDER BY pu.date DESC
+                """,
+                (user_id,),
+            ) as cursor:
+                purchases = await cursor.fetchall()
+                return [
+                    {
+                        "date": row[0],
+                        "project_name": row[1],
+                        "rate_name": row[2],
+                        "price": row[3],
+                    }
+                    for row in purchases
+                ]
+        except Exception as e:
+            print(f"Ошибка при получении истории покупок пользователя: {e}")
+            return None
 
 
 db = Database(DB_PATH)

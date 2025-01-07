@@ -17,6 +17,7 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
     await state.clear()
     project_id = callback.data.split("project_")[-1]
     project = await db.get_project_chats_and_channels(project_id)
+    project_info = await db.get_project(project_id)
     bot_info = await bot.get_me()
     bot_username = bot_info.username
     # print(project)
@@ -57,6 +58,14 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
     kb.append(
         [
             InlineKeyboardButton(
+                text="📊 Статистика проекта",
+                callback_data=f"stats_project_{project_id}",
+            )
+        ]
+    )
+    kb.append(
+        [
+            InlineKeyboardButton(
                 text="🗑️ Удалить проект", callback_data=f"delete_project_{project_id}"
             )
         ]
@@ -65,7 +74,7 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
 
-    msg_text = f"<b>🌐 Выберите чат или канал</b>\n\n🔗Ссылка на покупку:\n<code>https://t.me/{bot_username}?start=project_{project_id}</code>"
+    msg_text = f"<b>Название проекта:</b> <code>{project_info['name']}</code>\n\n<b>🌐 Выберите чат или канал</b>\n\n🔗Ссылка на покупку:\n<code>https://t.me/{bot_username}?start=project_{project_id}</code>"
     await bot.edit_message_text(
         text=msg_text,
         chat_id=callback.message.chat.id,
