@@ -76,6 +76,16 @@ class Database:
                 )
             """
             )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS active_subscriptions (
+                    user_id INTEGER,
+                    project_id INTEGER,
+                    rate_id INTEGER,
+                    date TEXT
+                )
+            """
+            )
             await self.db.commit()
 
             print("База данных инициализирована")
@@ -670,6 +680,59 @@ class Database:
         except Exception as e:
             print(f"Ошибка при получении истории покупок пользователя: {e}")
             return None
+
+    async def deduct_balance(self, user_id: int, amount: float):
+        """Вычитает сумму из баланса пользователя."""
+        try:
+            async with self.db.execute(
+                "SELECT balance FROM users WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                result = await cursor.fetchone()
+                if result is None:
+                    print("Пользователь не найден.")
+                    return False
+
+                current_balance = result[0]
+
+                if current_balance < amount:
+                    print("Недостаточно средств на балансе.")
+                    return False
+
+                new_balance = current_balance - amount
+                await self.db.execute(
+                    "UPDATE users SET balance = ? WHERE user_id = ?",
+                    (new_balance, user_id),
+                )
+                await self.db.commit()
+                print(
+                    f"Баланс пользователя {user_id} успешно обновлен: {new_balance} (-{amount})"
+                )
+                return True
+        except Exception as e:
+            print(f"Ошибка при вычитании суммы из баланса: {e}")
+            return False
+
+    async def add_active_subscriptions(
+        self, user_id: int, project_id: int, rate_id: int, date: str
+    ) -> bool:
+        """
+        Добавляет информацию о покупке в таблицу active_subscriptions.
+
+        :param user_id: Идентификатор пользователя, который купил тариф.
+        :param project_id: Идентификатор проекта, к которому относится тариф.
+        :param rate_id: Идентификатор тарифа, который купил пользователь.
+        :param date: Дата покупки в формате ISO 8601.
+        :return: True, если добавление прошло успешно, иначе False.
+        """
+        await self.db.execute(
+            """
+            INSERT INTO active_subscriptions (user_id, project_id, rate_id, date)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user_id, project_id, rate_id, date),
+        )
+        await self.db.commit()
+        return True
 
 
 db = Database(DB_PATH)

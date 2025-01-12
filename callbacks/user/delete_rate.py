@@ -5,9 +5,7 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 
-from aiogram.fsm.context import FSMContext
-
-from keyboards.user.user_inline import get_cancel_menu, get_back_to_project_menu
+from keyboards.user.user_inline import get_cancel_menu
 from data.database import db
 
 router = Router()

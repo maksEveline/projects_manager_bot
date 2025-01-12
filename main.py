@@ -22,6 +22,7 @@ from callbacks.user import (
     topup_balance,
     stats_project,
     my_purchases,
+    buy_rate,
 )
 from data.database import db
 from config import TOKEN
@@ -29,7 +30,6 @@ from config import TOKEN
 
 async def main():
     await db.initialize()
-
     bot = Bot(TOKEN)
     dp = Dispatcher()
 
@@ -54,6 +54,7 @@ async def main():
         topup_balance.router,
         stats_project.router,
         my_purchases.router,
+        buy_rate.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)
