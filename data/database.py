@@ -734,5 +734,77 @@ class Database:
         await self.db.commit()
         return True
 
+    async def get_project_id_by_chat_id(self, chat_id: int) -> int | None:
+        """
+        Ищет и возвращает project_id по chat_id или channel_id.
+        Если ничего не найдено, возвращает None.
+        """
+        query_chat = """
+            SELECT project_id FROM chat WHERE chat_id = ?
+        """
+        query_channel = """
+            SELECT project_id FROM channel WHERE channel_id = ?
+        """
+
+        try:
+            async with self.db.execute(query_chat, (chat_id,)) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return row[0]
+
+            async with self.db.execute(query_channel, (chat_id,)) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return row[0]
+
+        except Exception as e:
+            print(f"Ошибка при поиске project_id: {e}")
+
+        return None
+
+    async def get_user_active_subscriptions(
+        self, user_id: int, project_id: int
+    ) -> list[dict]:
+        query = """
+            SELECT user_id, project_id, rate_id, date 
+            FROM active_subscriptions 
+            WHERE user_id = ? AND project_id = ?
+        """
+        try:
+            async with self.db.execute(query, (user_id, project_id)) as cursor:
+                rows = await cursor.fetchall()
+                subscriptions = [
+                    {
+                        "user_id": row[0],
+                        "project_id": row[1],
+                        "rate_id": row[2],
+                        "date": row[3],
+                    }
+                    for row in rows
+                ]
+            return subscriptions
+        except Exception as e:
+            print(f"Ошибка при получении подписок: {e}")
+            return []
+
+    async def get_active_subscriptions(self):
+        cursor = await self.db.execute("SELECT * FROM active_subscriptions")
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [
+            dict(zip([column[0] for column in cursor.description], row)) for row in rows
+        ]
+
+    async def delete_subscription(self, user_id, project_id, rate_id, date):
+        await self.db.execute(
+            """
+            DELETE FROM active_subscriptions 
+            WHERE user_id = ? AND project_id = ? AND rate_id = ? AND date = ?
+            """,
+            (user_id, project_id, rate_id, date),
+        )
+
+        await self.db.commit()
+
 
 db = Database(DB_PATH)

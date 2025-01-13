@@ -3,6 +3,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from data.database import db
 from keyboards.user.user_inline import get_main_menu_user
+from utils.time_utils import get_timestamp, format_timestamp
 from config import DURATION_TYPES
 
 router = Router()
@@ -46,6 +47,7 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
     rate_id = callback.data.split("confirm_buy_rate_")[-1]
     rate_info = await db.get_rate(rate_id)
     project_info = await db.get_project(rate_info["project_id"])
+    project_chats = await db.get_project_chats_and_channels(rate_info["project_id"])
 
     if float(user_info["balance"]) < float(rate_info["price"]):
         kb = [
@@ -64,11 +66,36 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
         )
         return
 
+    if rate_info["duration_type"] == "hours":
+        sub_time = rate_info["duration"]
+    elif rate_info["duration_type"] == "days":
+        sub_time = rate_info["duration"] * 24
+
+    sub_timestamp = get_timestamp(sub_time)
+    formatted_time = format_timestamp(sub_timestamp)
+
+    await db.add_active_subscriptions(
+        user_id, rate_info["project_id"], rate_id, sub_timestamp
+    )
     await db.deduct_balance(user_id, rate_info["price"])
 
+    answ_text = (
+        f"✅ Тариф успешно приобретен\nПодписка действует до: {formatted_time}\n\n"
+    )
+
+    # пробуем разбанить пользователя в чатах и каналах если у него уже была подписка
+    for chat in project_chats:
+        answ_text += f"<b>{chat['name']}({chat['type']})</b> : {chat['link']}\n"
+
+        try:
+            await bot.unban_chat_member(chat["id"], user_id)
+            print(f"Пользователь {user_id} разбанен в чате {chat['id']}")
+        except Exception as e:
+            ...
+
     await bot.send_message(
-        text="✅ Тариф успешно приобретен",
+        text=answ_text,
         chat_id=callback.message.chat.id,
-        reply_markup=await get_main_menu_user(),
         parse_mode="HTML",
+        disable_web_page_preview=True,
     )

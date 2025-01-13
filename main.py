@@ -26,12 +26,17 @@ from callbacks.user import (
 )
 from data.database import db
 from config import TOKEN
+from utils.subscriptions_checker import checker_func
 
 
 async def main():
     await db.initialize()
     bot = Bot(TOKEN)
     dp = Dispatcher()
+
+    asyncio.create_task(
+        checker_func(bot)
+    )  # Запуск checker_func в отдельном асинхронном таске
 
     dp.include_routers(
         start.router,

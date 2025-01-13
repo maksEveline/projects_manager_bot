@@ -16,9 +16,15 @@ def format_timestamp(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
-# hours = 24
-# timestamp = get_timestamp(hours)
-# formatted_time = format_timestamp(1739308817.68842)
+def is_future_time(time_str: str) -> bool:
+    """
+    Проверяет, находится ли переданное время в будущем.
 
-# print(f"Timestamp через {hours} часов: {timestamp}")
-# print(f"Дата и время: {formatted_time}")
+    :param time_str: строка в формате "YYYY-MM-DD HH:MM:SS"
+    :return: True, если указанное время ещё не прошло, иначе False
+    """
+    given_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+    return given_time > datetime.now()
+
+
+# print(is_future_time("2025-02-11 23:20:17"))

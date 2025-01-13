@@ -140,10 +140,15 @@ async def process_message(message: Message, state: FSMContext, bot: Bot):
                     invite_link = await message.bot.create_chat_invite_link(
                         chat_id=chat_id, creates_join_request=True
                     )
+                    chat_name = (
+                        message.forward_from_chat.title
+                        if message.forward_from_chat
+                        else chat_info.title
+                    )
                     is_added = await db.add_chat(
                         project_id=project_id,
                         chat_id=chat_id,
-                        name=message.forward_from_chat.title,
+                        name=chat_name,
                         link=invite_link.invite_link,
                     )
                     if is_added:
