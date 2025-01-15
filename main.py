@@ -23,7 +23,9 @@ from callbacks.user import (
     stats_project,
     my_purchases,
     buy_rate,
+    del_item,
 )
+from callbacks.admin import open_admin, ban_user, change_user_balance
 from data.database import db
 from config import TOKEN
 from utils.subscriptions_checker import checker_func
@@ -60,6 +62,10 @@ async def main():
         stats_project.router,
         my_purchases.router,
         buy_rate.router,
+        del_item.router,
+        open_admin.router,
+        ban_user.router,
+        change_user_balance.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

@@ -31,9 +31,9 @@ async def checker_func(bot: Bot):
                     date=subscription["date"],
                 )
             else:
-                print(
-                    f"User {subscription['user_id']} is subscribed to project {subscription['project_id']}"
-                )
+                # print(
+                #     f"User {subscription['user_id']} is subscribed to project {subscription['project_id']}"
+                # )
+                ...
 
         await asyncio.sleep(30)
-           

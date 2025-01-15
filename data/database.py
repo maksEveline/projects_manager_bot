@@ -34,6 +34,7 @@ class Database:
             await self.db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS chat (
+                    id INTEGER PRIMARY KEY,
                     project_id INTEGER,
                     chat_id INTEGER,
                     name TEXT,
@@ -44,6 +45,7 @@ class Database:
             await self.db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS channel (
+                    id INTEGER PRIMARY KEY,
                     project_id INTEGER,
                     channel_id INTEGER,
                     name TEXT,
@@ -83,6 +85,13 @@ class Database:
                     project_id INTEGER,
                     rate_id INTEGER,
                     date TEXT
+                )
+            """
+            )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS blocked_users (
+                    user_id INTEGER
                 )
             """
             )
@@ -431,7 +440,7 @@ class Database:
 
             async with self.db.execute(
                 f"""
-                SELECT {id_column}, name, link, project_id 
+                SELECT {id_column}, name, link, project_id, id
                 FROM {table} 
                 WHERE {id_column} = ?
                 """,
@@ -445,6 +454,7 @@ class Database:
                         "link": row[2],
                         "project_id": row[3],
                         "type": type,
+                        "id_column": row[4],
                     }
                 return None
         except Exception as e:
@@ -805,6 +815,61 @@ class Database:
         )
 
         await self.db.commit()
+
+    async def delete_item(self, item_type: str, item_id: int):
+        """Удаляет элемент из таблицы channel или chat по id"""
+        table = "channel" if item_type == "channel" else "chat"
+        try:
+            await self.db.execute(
+                f"DELETE FROM {table} WHERE id = ?",
+                (item_id,),
+            )
+            await self.db.commit()
+            print(f"Элемент с ID {item_id} успешно удален из таблицы {table}.")
+            return True
+        except Exception as e:
+            print(f"Ошибка при удалении элемента: {e}")
+            return False
+
+    async def add_blocked_user(self, user_id: int) -> bool:
+        try:
+            await self.db.execute(
+                "INSERT INTO blocked_users (user_id) VALUES (?)", (user_id,)
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при блокировке пользователя: {e}")
+            return False
+
+    async def get_blocked_users(self):
+        cursor = await self.db.execute("SELECT user_id FROM blocked_users")
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [row[0] for row in rows]
+
+    async def delete_blocked_user(self, user_id: int) -> bool:
+        try:
+            await self.db.execute(
+                "DELETE FROM blocked_users WHERE user_id = ?", (user_id,)
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при разблокировке пользователя: {e}")
+            return False
+
+    async def change_user_balance(self, user_id: int, new_balance: float) -> bool:
+        try:
+            await self.db.execute(
+                "UPDATE users SET balance = ? WHERE user_id = ?",
+                (new_balance, user_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении баланса пользователя: {e}")
+            return False
 
 
 db = Database(DB_PATH)

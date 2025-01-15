@@ -97,3 +97,18 @@ async def get_profile_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
 
     return keyboard
+
+
+async def get_item_menu(
+    item_id: int, project_id: int, type: str
+) -> InlineKeyboardMarkup:
+    kb = [
+        [
+            InlineKeyboardButton(
+                text="🗑️ Удалить", callback_data=f"del_item_{item_id}/{type}"
+            )
+        ],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data=f"project_{project_id}")],
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+    return keyboard
