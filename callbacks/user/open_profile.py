@@ -21,6 +21,7 @@ async def open_profile(callback: CallbackQuery, bot: Bot, state: FSMContext):
     msg_text += f"🆔 Ваш айди: <code>{user['user_id']}</code>\n"
     msg_text += f"💰 Ваш баланс: <b>{user['balance']}$</b>\n"
     msg_text += f"🧑‍💻 Кол-во проектов: <b>{user['projects_count']}</b>\n"
+    msg_text += f"🧑‍💻 Макс. кол-во фикс. проектов: <b>{user['max_projects']}</b>\n"
     msg_text += f"🛍️ Кол-во покупок: <b>{purchases_count}</b>\n"
 
     await bot.edit_message_text(

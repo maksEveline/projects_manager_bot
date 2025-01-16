@@ -66,6 +66,14 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
     kb.append(
         [
             InlineKeyboardButton(
+                text="🤥 Изменить подписку пользователя",
+                callback_data=f"change_user_subscription_{project_id}",
+            )
+        ]
+    )
+    kb.append(
+        [
+            InlineKeyboardButton(
                 text="🗑️ Удалить проект", callback_data=f"delete_project_{project_id}"
             )
         ]

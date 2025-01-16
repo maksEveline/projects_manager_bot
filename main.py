@@ -24,6 +24,10 @@ from callbacks.user import (
     my_purchases,
     buy_rate,
     del_item,
+    change_user_subscription,
+    buy_more_projects,
+    add_project_percent,
+    add_project_fixed,
 )
 from callbacks.admin import open_admin, ban_user, change_user_balance
 from data.database import db
@@ -36,9 +40,7 @@ async def main():
     bot = Bot(TOKEN)
     dp = Dispatcher()
 
-    asyncio.create_task(
-        checker_func(bot)
-    )  # Запуск checker_func в отдельном асинхронном таске
+    asyncio.create_task(checker_func(bot))
 
     dp.include_routers(
         start.router,
@@ -66,6 +68,10 @@ async def main():
         open_admin.router,
         ban_user.router,
         change_user_balance.router,
+        change_user_subscription.router,
+        buy_more_projects.router,
+        add_project_percent.router,
+        add_project_fixed.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

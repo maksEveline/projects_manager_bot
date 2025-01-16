@@ -27,4 +27,9 @@ def is_future_time(time_str: str) -> bool:
     return given_time > datetime.now()
 
 
+def convert_to_timestamp(date_str: str) -> int:
+    dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    return int(dt.timestamp())
+
+
 # print(is_future_time("2025-02-11 23:20:17"))

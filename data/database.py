@@ -18,7 +18,8 @@ class Database:
                     user_id INTEGER PRIMARY KEY,
                     balance FLOAT DEFAULT 0,
                     first_name TEXT,
-                    username TEXT
+                    username TEXT,
+                    max_projects INTEGER DEFAULT 0
                 )
             """
             )
@@ -27,7 +28,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS project (
                     project_id INTEGER PRIMARY KEY,
                     name TEXT,
-                    user_id INTEGER
+                    user_id INTEGER,
+                    project_type TEXT
                 )
             """
             )
@@ -81,6 +83,7 @@ class Database:
             await self.db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS active_subscriptions (
+                    sub_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER,
                     project_id INTEGER,
                     rate_id INTEGER,
@@ -130,7 +133,7 @@ class Database:
             print(f"Ошибка при добавлении пользователя: {e}")
             return False
 
-    async def add_project(self, name: str, user_id: int) -> bool:
+    async def add_project(self, name: str, user_id: int, project_type: str) -> bool:
         """
         Добавляет новый проект в базу данных.
 
@@ -146,8 +149,8 @@ class Database:
                     return False
 
             await self.db.execute(
-                "INSERT INTO project (name, user_id) VALUES (?, ?)",
-                (name, user_id),
+                "INSERT INTO project (name, user_id, project_type) VALUES (?, ?, ?)",
+                (name, user_id, project_type),
             )
             await self.db.commit()
             return True
@@ -164,11 +167,18 @@ class Database:
         """
         try:
             async with self.db.execute(
-                "SELECT project_id, name FROM project WHERE user_id = ?",
+                "SELECT project_id, name, project_type FROM project WHERE user_id = ?",
                 (user_id,),
             ) as cursor:
                 projects = await cursor.fetchall()
-                return [{"project_id": row[0], "name": row[1]} for row in projects]
+                return [
+                    {
+                        "project_id": row[0],
+                        "name": row[1],
+                        "project_type": row[2],
+                    }
+                    for row in projects
+                ]
         except Exception as e:
             print(f"Ошибка при получении проектов пользователя: {e}")
             return None
@@ -402,12 +412,13 @@ class Database:
                 """
                 SELECT 
                     u.user_id, 
-                    u.balance, 
+                    u.balance,
+                    u.max_projects,
                     COUNT(DISTINCT p.project_id) as projects_count
                 FROM users u
                 LEFT JOIN project p ON u.user_id = p.user_id
                 WHERE u.user_id = ?
-                GROUP BY u.user_id, u.balance
+                GROUP BY u.user_id, u.balance, u.max_projects
                 """,
                 (user_id,),
             ) as cursor:
@@ -416,7 +427,8 @@ class Database:
                     return {
                         "user_id": row[0],
                         "balance": row[1],
-                        "projects_count": row[2],
+                        "max_projects": row[2],
+                        "projects_count": row[3],
                     }
                 return None
         except Exception as e:
@@ -775,26 +787,54 @@ class Database:
     async def get_user_active_subscriptions(
         self, user_id: int, project_id: int
     ) -> list[dict]:
+        """
+        Получает список активных подписок пользователя для конкретного проекта
+        с подробной информацией о тарифе.
+
+        :param user_id: ID пользователя
+        :param project_id: ID проекта
+        :return: Список словарей с информацией о подписках
+        """
         query = """
-            SELECT user_id, project_id, rate_id, date 
-            FROM active_subscriptions 
-            WHERE user_id = ? AND project_id = ?
+            SELECT 
+                s.sub_id,
+                s.user_id,
+                s.project_id,
+                s.rate_id,
+                s.date,
+                r.name as rate_name,
+                r.price,
+                r.duration,
+                r.duration_type,
+                r.description,
+                p.name as project_name
+            FROM active_subscriptions s
+            JOIN rate r ON s.rate_id = r.rate_id
+            JOIN project p ON s.project_id = p.project_id
+            WHERE s.user_id = ? AND s.project_id = ?
         """
         try:
             async with self.db.execute(query, (user_id, project_id)) as cursor:
                 rows = await cursor.fetchall()
                 subscriptions = [
                     {
-                        "user_id": row[0],
-                        "project_id": row[1],
-                        "rate_id": row[2],
-                        "date": row[3],
+                        "sub_id": row[0],
+                        "user_id": row[1],
+                        "project_id": row[2],
+                        "rate_id": row[3],
+                        "date": row[4],
+                        "rate_name": row[5],
+                        "price": row[6],
+                        "duration": row[7],
+                        "duration_type": row[8],
+                        "description": row[9],
+                        "project_name": row[10],
                     }
                     for row in rows
                 ]
             return subscriptions
         except Exception as e:
-            print(f"Ошибка при получении подписок: {e}")
+            print(f"Ошибка при получении активных подписок: {e}")
             return []
 
     async def get_active_subscriptions(self):
@@ -869,6 +909,102 @@ class Database:
             return True
         except Exception as e:
             print(f"Ошибка при обновлении баланса пользователя: {e}")
+            return False
+
+    async def add_user_purchase(
+        self, user_id: int, project_id: int, rate_id: int, date: str
+    ) -> bool:
+        """
+        Добавляет информацию о покупке в таблицу purchases.
+
+        :param user_id: ID пользователя
+        :param project_id: ID проекта
+        :param rate_id: ID тарифа
+        :param date: Дата покупки
+        :return: True если покупка успешно добавлена, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                """
+                INSERT INTO purchases (user_id, project_id, rate_id, date)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, project_id, rate_id, date),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при добавлении покупки: {e}")
+            return False
+
+    async def update_subscription_date(self, sub_id: int, new_date: str) -> bool:
+        """
+        Обновляет дату активной подписки пользователя.
+
+        :param sub_id: ID подписки
+        :param new_date: Новая дата подписки
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE active_subscriptions SET date = ? WHERE sub_id = ?",
+                (new_date, sub_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении даты подписки: {e}")
+            return False
+
+    async def add_max_projects(self, user_id: int, amount: int) -> bool:
+        """
+        Увеличивает максимальное количество проектов пользователя.
+
+        :param user_id: ID пользователя
+        :param amount: Количество проектов для добавления
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE users SET max_projects = max_projects + ? WHERE user_id = ?",
+                (amount, user_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при добавлении максимального количества проектов: {e}")
+            return False
+
+    async def subtract_max_projects(self, user_id: int, amount: int) -> bool:
+        """
+        Уменьшает максимальное количество проектов пользователя.
+
+        :param user_id: ID пользователя
+        :param amount: Количество проектов для вычитания
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                "SELECT max_projects FROM users WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                result = await cursor.fetchone()
+                if result is None:
+                    return False
+
+                current_max = result[0]
+                new_max = current_max - amount
+
+                if new_max < 0:
+                    new_max = 0
+
+            await self.db.execute(
+                "UPDATE users SET max_projects = ? WHERE user_id = ?",
+                (new_max, user_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при вычитании максимального количества проектов: {e}")
             return False
 
 

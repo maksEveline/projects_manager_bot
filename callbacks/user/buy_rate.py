@@ -1,3 +1,4 @@
+from datetime import datetime
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -78,6 +79,10 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
         user_id, rate_info["project_id"], rate_id, sub_timestamp
     )
     await db.deduct_balance(user_id, rate_info["price"])
+    await db.update_user_balance(project_info["user_id"], rate_info["price"])
+
+    now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await db.add_user_purchase(user_id, rate_info["project_id"], rate_id, now_time)
 
     answ_text = (
         f"✅ Тариф успешно приобретен\nПодписка действует до: {formatted_time}\n\n"

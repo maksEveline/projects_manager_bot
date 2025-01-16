@@ -5,3 +5,5 @@ CRYPTOBOT_TOKEN = "323012:AA3Wzl0JcryVmNLmhWug3kHwytP0DMBQhHh"
 DB_PATH = "data/database.db"
 
 DURATION_TYPES = {"days": "дней", "hours": "часов"}
+
+FIXED_PERCENT = 3.0

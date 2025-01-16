@@ -92,6 +92,11 @@ async def get_rate_settings_menu(rate_id: int, project_id: int) -> InlineKeyboar
 async def get_profile_menu():
     kb = [
         [InlineKeyboardButton(text="🛍️ Мои покупки", callback_data=f"my_purchases")],
+        [
+            InlineKeyboardButton(
+                text="💰 Докупить проекты", callback_data="buy_more_projects"
+            )
+        ],
         [InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
