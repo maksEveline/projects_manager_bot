@@ -11,7 +11,9 @@ from aiogram.fsm.state import State, StatesGroup
 from data.database import db
 from keyboards.user.user_inline import get_back_to_project_menu
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 class AddToProject(StatesGroup):

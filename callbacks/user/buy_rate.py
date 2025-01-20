@@ -4,20 +4,28 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from data.database import db
 from keyboards.user.user_inline import get_main_menu_user
-from utils.time_utils import get_timestamp, format_timestamp
-from config import DURATION_TYPES
+from utils.json_utils import get_project_percentage
+from utils.time_utils import format_hours, get_timestamp, format_timestamp
+from config import DURATION_TYPES, FIXED_PERCENT
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("buy_rate_"))
 async def buy_rate(callback: CallbackQuery, bot: Bot):
     rate_id = int(callback.data.split("_")[-1])
     rate = await db.get_rate(rate_id)
-    dur_type = DURATION_TYPES[rate["duration_type"]]
+    if rate["duration_type"] == "hours":
+        dur_type = format_hours(rate["duration"])
+    else:
+        dur_type = f"{rate['duration']} дней"
     project_chats = await db.get_project_chats_and_channels(rate["project_id"])
 
-    answ_msg = f"🤑 Вы хотите купить <b>{rate['name']}</b> - {rate['duration']} {dur_type}({rate['price']}$)\n\n"
+    answ_msg = (
+        f"🤑 Вы хотите купить <b>{rate['name']}</b> - {dur_type}({rate['price']}$)\n\n"
+    )
     answ_msg += "🦋 Вы получите доступ в следующих чатах и каналах:\n\n"
 
     for chat in project_chats:
@@ -76,10 +84,22 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
     formatted_time = format_timestamp(sub_timestamp)
 
     await db.add_active_subscriptions(
-        user_id, rate_info["project_id"], rate_id, sub_timestamp
+        user_id, rate_info["project_id"], rate_id, sub_timestamp, hourses=sub_time
     )
-    await db.deduct_balance(user_id, rate_info["price"])
-    await db.update_user_balance(project_info["user_id"], rate_info["price"])
+
+    dirrty_price = rate_info["price"]
+    clean_price = dirrty_price - (dirrty_price * get_project_percentage())
+
+    if project_info["project_type"] == "percentage":
+        await db.deduct_balance(
+            user_id, dirrty_price
+        )  # у пользователя снимаем всю сумму
+        await db.update_user_balance(
+            project_info["user_id"], clean_price
+        )  # владельцу проекта добавляем сумму за вычетом процента
+    else:
+        await db.deduct_balance(user_id, rate_info["price"])
+        await db.update_user_balance(project_info["user_id"], rate_info["price"])
 
     now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     await db.add_user_purchase(user_id, rate_info["project_id"], rate_id, now_time)

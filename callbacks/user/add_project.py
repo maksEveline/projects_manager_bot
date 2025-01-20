@@ -10,14 +10,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from data.database import db
-from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
-from config import FIXED_PERCENT
+from keyboards.user.user_inline import get_cancel_menu
+from utils.json_utils import get_project_percentage
+
+from callbacks.user.add_project_fixed import AddProjectFixed
 
 router = Router()
-
-
-class AddProject(StatesGroup):
-    name = State()
 
 
 @router.callback_query(F.data == "add_project")
@@ -37,7 +35,7 @@ async def add_project(callback: CallbackQuery, state: FSMContext, bot: Bot):
             ],
             [
                 InlineKeyboardButton(
-                    text=f"Этот проект за {FIXED_PERCENT}% от дохода",
+                    text=f"Этот проект за {int(get_project_percentage() * 100)}% от дохода",
                     callback_data="add_project_percent",
                 )
             ],
@@ -53,26 +51,13 @@ async def add_project(callback: CallbackQuery, state: FSMContext, bot: Bot):
         )
         return
     else:
-        kb = [
-            [
-                InlineKeyboardButton(
-                    text="Этот проект за фикс цену", callback_data="add_project_fixed"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=f"Этот проект за {FIXED_PERCENT}% от дохода",
-                    callback_data="add_project_percent",
-                )
-            ],
-            [InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")],
-        ]
-        keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
-
-        await bot.edit_message_text(
-            text="💰 Выберите тип проекта",
-            reply_markup=keyboard,
+        msg = await bot.edit_message_text(
+            text="📋 Напишите название проекта",
+            reply_markup=await get_cancel_menu(),
             chat_id=callback.from_user.id,
             message_id=callback.message.message_id,
         )
-        return
+
+        await state.update_data({"msg_id": msg.message_id})
+
+        await state.set_state(AddProjectFixed.name)

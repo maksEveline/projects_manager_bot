@@ -28,8 +28,18 @@ from callbacks.user import (
     buy_more_projects,
     add_project_percent,
     add_project_fixed,
+    give_subscription,
+    newsletter_project,
+    swap_project_type,
 )
-from callbacks.admin import open_admin, ban_user, change_user_balance
+from callbacks.admin import (
+    open_admin,
+    ban_user,
+    change_user_balance,
+    change_monhtly_percentage,
+    admin_newsletter,
+    change_project_prices,
+)
 from data.database import db
 from config import TOKEN
 from utils.subscriptions_checker import checker_func
@@ -72,6 +82,12 @@ async def main():
         buy_more_projects.router,
         add_project_percent.router,
         add_project_fixed.router,
+        change_monhtly_percentage.router,
+        give_subscription.router,
+        newsletter_project.router,
+        admin_newsletter.router,
+        change_project_prices.router,
+        swap_project_type.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

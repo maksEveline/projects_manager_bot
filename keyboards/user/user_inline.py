@@ -63,23 +63,23 @@ async def get_rate_settings_menu(rate_id: int, project_id: int) -> InlineKeyboar
     kb = [
         [
             InlineKeyboardButton(
-                text="💰 Изменить цену", callback_data=f"change_rate_price_{rate_id}"
+                text="Изменить цену", callback_data=f"change_rate_price_{rate_id}"
             ),
         ],
         [
             InlineKeyboardButton(
-                text="🔍 Изменить название", callback_data=f"change_rate_name_{rate_id}"
+                text="Изменить название", callback_data=f"change_rate_name_{rate_id}"
             ),
         ],
         [
             InlineKeyboardButton(
-                text="⏱️ Изменить длительность",
+                text="Изменить длительность",
                 callback_data=f"change_rate_duration_{rate_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="🗑️ Удалить тариф",
+                text="Удалить тариф",
                 callback_data=f"delete_rate_{rate_id}",
             )
         ],

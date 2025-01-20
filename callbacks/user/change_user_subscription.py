@@ -16,7 +16,9 @@ from utils.time_utils import format_timestamp, convert_to_timestamp
 from data.database import db
 from keyboards.user.user_inline import get_back_to_project_menu, get_cancel_menu
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 class ChangeUserSubscription(StatesGroup):

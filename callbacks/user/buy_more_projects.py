@@ -1,7 +1,6 @@
-from aiogram import Router, F, Bot
+from aiogram import F, Bot
 from aiogram.types import (
     CallbackQuery,
-    Message,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
@@ -11,8 +10,12 @@ from aiogram.fsm.context import FSMContext
 from data.database import db
 from keyboards.user.user_inline import get_back_to_main_menu
 from utils.json_utils import get_fixed_prices
+from utils.time_utils import get_timestamp
 
-router = Router()
+from utils.messages_utils import send_admins_message
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data == "buy_more_projects")
@@ -68,9 +71,19 @@ async def buy_count_projects(callback: CallbackQuery, state: FSMContext, bot: Bo
             reply_markup=keyboard,
         )
         return
+
     else:
-        await db.deduct_balance(user["id"], float(price_dollar))
-        await db.add_max_projects(user["id"], int(count))
+        sub_time = 30 * 24
+        timestamp = get_timestamp(sub_time)
+
+        await db.add_buyed_project(user["user_id"], int(count), timestamp)
+
+        await db.deduct_balance(user["user_id"], float(price_dollar))
+        await db.add_max_projects(user["user_id"], int(count))
+
+        await send_admins_message(
+            bot, f"Пользователь <code>{user['user_id']}</code> купил {count} проектов"
+        )
 
         await callback.message.edit_text(
             f"💰 Вы успешно приобрели {count} проектов",

@@ -9,7 +9,9 @@ from aiogram.types import (
 from data.database import db
 from keyboards.user.user_inline import get_back_to_main_menu
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("delete_project_"))

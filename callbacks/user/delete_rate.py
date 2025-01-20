@@ -8,7 +8,9 @@ from aiogram.types import (
 from keyboards.user.user_inline import get_cancel_menu
 from data.database import db
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("delete_rate_"))

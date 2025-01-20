@@ -6,4 +6,4 @@ DB_PATH = "data/database.db"
 
 DURATION_TYPES = {"days": "дней", "hours": "часов"}
 
-FIXED_PERCENT = 3.0
+FIXED_PERCENT = 0.5

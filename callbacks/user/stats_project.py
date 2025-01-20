@@ -1,12 +1,13 @@
-from datetime import datetime
-from aiogram import Router, F, Bot
+from aiogram import F, Bot
 from aiogram.types import CallbackQuery
 
 from keyboards.user.user_inline import get_back_to_project_menu
 from data.database import db
 from config import DURATION_TYPES
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("stats_project_"))

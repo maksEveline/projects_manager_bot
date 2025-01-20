@@ -54,11 +54,7 @@ async def topup_balance_process_sum(message: Message, state: FSMContext, bot: Bo
             chat_id=message.from_user.id, message_id=message.message_id
         )
 
-        # is_updated = await db.update_user_balance(
-        #     user_id=message.from_user.id, amount=sum
-        # )
-
-        cryptoBot = AsyncCryptoBot("323012:AA3Wzl0JcryVmNLmhWug3kHwytP0DMBQhHh")
+        cryptoBot = AsyncCryptoBot(CRYPTOBOT_TOKEN)
         order_crypto_bot = await cryptoBot.create_invoice(
             add_commission(sum), currency_type="crypto", asset="USDT"
         )
@@ -83,7 +79,7 @@ async def topup_balance_process_sum(message: Message, state: FSMContext, bot: Bo
         keyboard = InlineKeyboardMarkup(inline_keyboard=payment_kb)
 
         await bot.edit_message_text(
-            text=f"Сумма к оплате: {add_commission(sum)}$ (+3%)",
+            text=f"Сумма к оплате: {add_commission(sum)}$",
             reply_markup=keyboard,
             chat_id=message.from_user.id,
             message_id=msg_id,
@@ -108,7 +104,7 @@ async def confirm_topup_balance(callback: CallbackQuery, state: FSMContext, bot:
     data = await state.get_data()
     invoice_id = data.get("invoice_id")
 
-    cryptoBot = AsyncCryptoBot("323012:AA3Wzl0JcryVmNLmhWug3kHwytP0DMBQhHh")
+    cryptoBot = AsyncCryptoBot(CRYPTOBOT_TOKEN)
 
     info_crypto_bot = await cryptoBot.get_invoices(invoice_ids=[invoice_id], count=1)
     status = info_crypto_bot[0].status

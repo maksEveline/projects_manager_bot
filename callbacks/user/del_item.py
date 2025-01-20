@@ -5,7 +5,9 @@ from aiogram.fsm.context import FSMContext
 from keyboards.user.user_inline import get_back_to_project_menu
 from data.database import db
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("del_item_"))

@@ -8,7 +8,9 @@ from data.database import db
 from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 from config import FIXED_PERCENT
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 class AddProjectPercent(StatesGroup):

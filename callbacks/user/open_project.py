@@ -9,7 +9,9 @@ from aiogram.fsm.context import FSMContext
 
 from data.database import db
 
-router = Router()
+from utils.routers import create_router_with_user_middleware
+
+router = create_router_with_user_middleware()
 
 
 @router.callback_query(F.data.startswith("project_"))
@@ -20,7 +22,6 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
     project_info = await db.get_project(project_id)
     bot_info = await bot.get_me()
     bot_username = bot_info.username
-    # print(project)
 
     kb = []
 
@@ -68,9 +69,40 @@ async def open_project(callback: CallbackQuery, bot: Bot, state: FSMContext):
             InlineKeyboardButton(
                 text="🤥 Изменить подписку пользователя",
                 callback_data=f"change_user_subscription_{project_id}",
+            ),
+            InlineKeyboardButton(
+                text=f"✨ Выдать подписку",
+                callback_data=f"give_subscription_{project_id}",
+            ),
+        ],
+    )
+    kb.append(
+        [
+            InlineKeyboardButton(
+                text="📩 Рассылка", callback_data=f"newsletter_project_{project_id}"
             )
         ]
     )
+
+    if project_info["project_type"] == "fixed":
+        kb.append(
+            [
+                InlineKeyboardButton(
+                    text="🔄 Переключить на % от дохода",
+                    callback_data=f"switch_to_percent/{project_id}",
+                )
+            ]
+        )
+    else:
+        kb.append(
+            [
+                InlineKeyboardButton(
+                    text="🔄 Переключить на фикс цену",
+                    callback_data=f"switch_to_fixed/{project_id}",
+                )
+            ]
+        )
+
     kb.append(
         [
             InlineKeyboardButton(

@@ -16,6 +16,9 @@ router = create_router_with_user_middleware()
 
 @router.message(F.text == "/start")
 async def start_func(msg: Message, bot: Bot):
+    if msg.chat.type != "private":
+        return
+
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
     username = msg.from_user.username
@@ -35,6 +38,9 @@ async def start_func(msg: Message, bot: Bot):
 
 @router.message(F.text.startswith("/start"))
 async def splited_start(msg: Message, bot: Bot):
+    if msg.chat.type != "private":
+        return
+
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
     username = msg.from_user.username
@@ -88,3 +94,20 @@ async def back_to_main_menu(callback: CallbackQuery, bot: Bot):
         chat_id=callback.from_user.id,
         message_id=callback.message.message_id,
     )
+
+
+@router.message(F.text == "/get_id")
+async def get_id(msg: Message):
+    chat_type = msg.chat.type
+    if chat_type == "private":
+        await msg.answer(
+            text=f"🆔 Ваш ID: <code>{msg.from_user.id}</code>", parse_mode="html"
+        )
+    else:
+        await msg.answer(
+            text=(
+                f"👤 Ваш ID: <code>{msg.from_user.id}</code>\n"
+                f"💭 ID чата: <code>{msg.chat.id}</code>"
+            ),
+            parse_mode="html",
+        )
