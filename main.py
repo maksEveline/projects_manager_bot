@@ -1,6 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 
+
 from handlers.user import start
 from handlers import join_request
 from callbacks.user import (
@@ -31,6 +32,15 @@ from callbacks.user import (
     give_subscription,
     newsletter_project,
     swap_project_type,
+    active_purchases,
+    enable_payment_requisites,
+    add_payment_requisites,
+    change_payment_requisites,
+    enable_project_payment,
+    accept_payment_request,
+    manage_autorefill,
+    extend_proj_subscription,
+    transfer_project,
 )
 from callbacks.admin import (
     open_admin,
@@ -39,10 +49,16 @@ from callbacks.admin import (
     change_monhtly_percentage,
     admin_newsletter,
     change_project_prices,
+    get_statistic,
+    change_price_per_project,
+    change_support_link,
+    change_update_channel_link,
 )
 from data.database import db
 from config import TOKEN
 from utils.subscriptions_checker import checker_func
+from utils.projects_manager import projects_manager_func
+from utils.users_subs_checker import users_subs_checker_func
 
 
 async def main():
@@ -51,6 +67,8 @@ async def main():
     dp = Dispatcher()
 
     asyncio.create_task(checker_func(bot))
+    asyncio.create_task(projects_manager_func(bot))
+    asyncio.create_task(users_subs_checker_func(bot))
 
     dp.include_routers(
         start.router,
@@ -88,6 +106,19 @@ async def main():
         admin_newsletter.router,
         change_project_prices.router,
         swap_project_type.router,
+        get_statistic.router,
+        active_purchases.router,
+        enable_payment_requisites.router,
+        add_payment_requisites.router,
+        change_payment_requisites.router,
+        enable_project_payment.router,
+        accept_payment_request.router,
+        manage_autorefill.router,
+        extend_proj_subscription.router,
+        change_price_per_project.router,
+        change_support_link.router,
+        change_update_channel_link.router,
+        transfer_project.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

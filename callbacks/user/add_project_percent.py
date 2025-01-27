@@ -9,6 +9,7 @@ from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 from config import FIXED_PERCENT
 
 from utils.routers import create_router_with_user_middleware
+from utils.time_utils import get_timestamp
 
 router = create_router_with_user_middleware()
 
@@ -41,8 +42,14 @@ async def add_percent_project_process_name(
     msg_id = data.get("msg_id")
     project_name = message.text
 
+    sub_time = 9999 * 24  # 30 дней * 24 часа
+    sub_timestamp = get_timestamp(sub_time)
+
     is_added = await db.add_project(
-        project_name, message.from_user.id, project_type="percentage"
+        project_name,
+        message.from_user.id,
+        project_type="percentage",
+        project_sub_end=sub_timestamp,
     )
 
     if is_added:

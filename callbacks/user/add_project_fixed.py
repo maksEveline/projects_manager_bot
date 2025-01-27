@@ -8,6 +8,8 @@ from data.database import db
 from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 
 from utils.routers import create_router_with_user_middleware
+from utils.json_utils import get_price_per_project
+from utils.time_utils import format_timestamp, get_timestamp
 
 router = create_router_with_user_middleware()
 
@@ -19,6 +21,16 @@ class AddProjectFixed(StatesGroup):
 @router.callback_query(F.data == "add_project_fixed")
 async def add_fixed_project(callback: CallbackQuery, state: FSMContext, bot: Bot):
     user = await db.get_user(callback.from_user.id)
+    price_per_project = get_price_per_project()
+
+    if float(user["balance"]) < float(price_per_project):
+        await bot.edit_message_text(
+            text="❌ У вас недостаточно средств",
+            reply_markup=await get_back_to_main_menu(),
+            chat_id=callback.from_user.id,
+            message_id=callback.message.message_id,
+        )
+        return
 
     msg = await bot.edit_message_text(
         text="📋 Напишите название проекта",
@@ -37,10 +49,18 @@ async def add_fixed_project_process_name(message: Message, state: FSMContext, bo
     data = await state.get_data()
     msg_id = data.get("msg_id")
     project_name = message.text
+    price_per_project = get_price_per_project()
+
+    sub_time = 30 * 24  # 30 дней * 24 часа
+    sub_timestamp = get_timestamp(sub_time)
 
     is_added = await db.add_project(
-        project_name, message.from_user.id, project_type="fixed"
+        project_name,
+        message.from_user.id,
+        project_type="fixed",
+        project_sub_end=sub_timestamp,
     )
+    await db.deduct_balance(message.from_user.id, float(price_per_project))
 
     if is_added:
         project_id = await db.get_projectid_by_projectname(

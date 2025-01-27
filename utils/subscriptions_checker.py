@@ -6,7 +6,6 @@ from utils.time_utils import format_timestamp, is_future_time
 
 
 async def checker_func(bot: Bot):
-    # await bot.ban_chat_member(-1002405948916, 7364585753)
     while True:
         subscriptions = await db.get_active_subscriptions()
 

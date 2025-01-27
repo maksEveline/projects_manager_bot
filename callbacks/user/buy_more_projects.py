@@ -45,6 +45,37 @@ async def buy_more_projects(callback: CallbackQuery, state: FSMContext, bot: Bot
 @router.callback_query(F.data.startswith("buy_count_projects_"))
 async def buy_count_projects(callback: CallbackQuery, state: FSMContext, bot: Bot):
     count = callback.data.split("buy_count_projects_")[-1]
+
+    kb = [
+        [
+            InlineKeyboardButton(
+                text="✅Покупаю", callback_data=f"confirm_buy_count_projects_{count}"
+            )
+        ]
+    ]
+    kb.append([InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+
+    prices = get_fixed_prices()
+    price_dollar = None
+
+    for price in prices:
+        if price["count"] == int(count):
+            price_dollar = price["price"]
+            break
+
+    await callback.message.edit_text(
+        f"🤑 Вы хотите купить <b>{count}</b> проектов - {price_dollar}$",
+        reply_markup=keyboard,
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data.startswith("confirm_buy_count_projects_"))
+async def confirm_buy_count_projects(
+    callback: CallbackQuery, state: FSMContext, bot: Bot
+):
+    count = callback.data.split("confirm_buy_count_projects_")[-1]
     user = await db.get_user(callback.from_user.id)
 
     prices = get_fixed_prices()

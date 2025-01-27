@@ -1,7 +1,11 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from utils.json_utils import get_settings
+
 
 async def get_main_menu_user() -> InlineKeyboardMarkup:
+    settings = get_settings()
+
     kb = []
 
     kb.append(
@@ -11,6 +15,14 @@ async def get_main_menu_user() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data=f"add_balance")]
     )
     kb.append([InlineKeyboardButton(text="ℹ Профиль", callback_data=f"profile")])
+    kb.append(
+        [
+            InlineKeyboardButton(text="🛟 Поддержка", url=settings["support_link"]),
+            InlineKeyboardButton(
+                text="🔗 Канал проекта", url=settings["update_channel_link"]
+            ),
+        ]
+    )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
     return keyboard
@@ -47,6 +59,12 @@ async def get_back_to_project_menu(project_id: int) -> InlineKeyboardMarkup:
     return keyboard
 
 
+async def get_back_to_profile_menu() -> InlineKeyboardMarkup:
+    kb = [[InlineKeyboardButton(text="🔙 Назад", callback_data=f"profile")]]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+    return keyboard
+
+
 async def get_back_to_main_menu() -> InlineKeyboardMarkup:
     kb = [[InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")]]
     keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
@@ -63,23 +81,24 @@ async def get_rate_settings_menu(rate_id: int, project_id: int) -> InlineKeyboar
     kb = [
         [
             InlineKeyboardButton(
-                text="Изменить цену", callback_data=f"change_rate_price_{rate_id}"
+                text="💸 Изменить цену", callback_data=f"change_rate_price_{rate_id}"
             ),
         ],
         [
             InlineKeyboardButton(
-                text="Изменить название", callback_data=f"change_rate_name_{rate_id}"
+                text="🔍 Изменить название",
+                callback_data=f"change_rate_name_{rate_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="Изменить длительность",
+                text="⏱️ Изменить длительность",
                 callback_data=f"change_rate_duration_{rate_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="Удалить тариф",
+                text="🗑️ Удалить тариф",
                 callback_data=f"delete_rate_{rate_id}",
             )
         ],
@@ -91,11 +110,13 @@ async def get_rate_settings_menu(rate_id: int, project_id: int) -> InlineKeyboar
 
 async def get_profile_menu():
     kb = [
-        [InlineKeyboardButton(text="🛍️ Мои покупки", callback_data=f"my_purchases")],
         [
             InlineKeyboardButton(
-                text="💰 Докупить проекты", callback_data="buy_more_projects"
-            )
+                text="🛍️ История покупок", callback_data=f"my_purchases"
+            ),
+            InlineKeyboardButton(
+                text="🔍 Активные покупки", callback_data="active_purchases"
+            ),
         ],
         [InlineKeyboardButton(text="🔙 Главное меню", callback_data="main_menu")],
     ]

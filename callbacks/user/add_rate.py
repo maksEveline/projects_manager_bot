@@ -111,11 +111,17 @@ async def set_add_dur_type(call: CallbackQuery, state: FSMContext, bot: Bot):
     rate_name = data.get("rate_name")
     rate_price = data.get("rate_price")
     project_id = data.get("project_id")
+    duration_type = call.data.split("set_duration_")[-1]
 
-    await state.update_data({"duration_type": call.data.split("set_duration_")[-1]})
+    await state.update_data({"duration_type": duration_type})
+
+    if duration_type == "days":
+        duration_type = "днях"
+    elif duration_type == "hours":
+        duration_type = "часах"
 
     await bot.edit_message_text(
-        text="📋 Напишите длительность тарифа (в днях)",
+        text=f"📋 Напишите длительность тарифа (в {duration_type})",
         reply_markup=await get_cancel_menu(),
         chat_id=call.from_user.id,
         message_id=msg_id,

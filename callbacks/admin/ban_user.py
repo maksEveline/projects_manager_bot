@@ -23,8 +23,9 @@ class UnbanUser(StatesGroup):
 async def start_block_user(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await bot.send_message(
         callback.from_user.id,
-        "Введите ID пользователя, который вы хотите заблокировать",
+        "Введите ID пользователя <b>или username без @</b>, который вы хотите заблокировать",
         reply_markup=await get_cancel_menu(),
+        parse_mode="HTML",
     )
     await state.set_state(BanUser.user_id)
 
@@ -33,23 +34,27 @@ async def start_block_user(callback: CallbackQuery, state: FSMContext, bot: Bot)
 async def block_user(message: Message, state: FSMContext, bot: Bot):
     try:
         user_id = int(message.text)
-        is_blocked = await db.add_blocked_user(user_id)
-        if is_blocked:
-            await bot.send_message(
-                message.from_user.id,
-                f"Пользователь {user_id} заблокирован",
-                reply_markup=await get_admin_menu(),
-            )
-        else:
-            await bot.send_message(
-                message.from_user.id,
-                "Ошибка при блокировке пользователя",
-                reply_markup=await get_admin_menu(),
-            )
     except ValueError:
+        user_id = await db.get_userid_by_username(message.text.lower())
+        if user_id is None:
+            await bot.send_message(
+                message.from_user.id,
+                f"Пользователь {message.text} не найден",
+                reply_markup=await get_admin_menu(),
+            )
+            return
+
+    is_blocked = await db.add_blocked_user(user_id)
+    if is_blocked:
         await bot.send_message(
             message.from_user.id,
-            "Ошибка: ID пользователя должен быть числом",
+            f"Пользователь {user_id} заблокирован",
+            reply_markup=await get_admin_menu(),
+        )
+    else:
+        await bot.send_message(
+            message.from_user.id,
+            "Ошибка при блокировке пользователя",
             reply_markup=await get_admin_menu(),
         )
 
@@ -60,8 +65,9 @@ async def block_user(message: Message, state: FSMContext, bot: Bot):
 async def start_unblock_user(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await bot.send_message(
         callback.from_user.id,
-        "Введите ID пользователя, который вы хотите разблокировать",
+        "Введите ID пользователя <b>или username без @</b>, который вы хотите разблокировать",
         reply_markup=await get_cancel_menu(),
+        parse_mode="HTML",
     )
     await state.set_state(UnbanUser.user_id)
 
@@ -70,23 +76,27 @@ async def start_unblock_user(callback: CallbackQuery, state: FSMContext, bot: Bo
 async def unblock_user(message: Message, state: FSMContext, bot: Bot):
     try:
         user_id = int(message.text)
-        is_unblocked = await db.delete_blocked_user(user_id)
-        if is_unblocked:
-            await bot.send_message(
-                message.from_user.id,
-                f"Пользователь {user_id} разблокирован",
-                reply_markup=await get_admin_menu(),
-            )
-        else:
-            await bot.send_message(
-                message.from_user.id,
-                "Ошибка при разблокировке пользователя",
-                reply_markup=await get_admin_menu(),
-            )
     except ValueError:
+        user_id = await db.get_userid_by_username(message.text.lower())
+        if user_id is None:
+            await bot.send_message(
+                message.from_user.id,
+                f"Пользователь {message.text} не найден",
+                reply_markup=await get_admin_menu(),
+            )
+            return
+
+    is_unblocked = await db.delete_blocked_user(user_id)
+    if is_unblocked:
         await bot.send_message(
             message.from_user.id,
-            "Ошибка: ID пользователя должен быть числом",
+            f"Пользователь {user_id} разблокирован",
+            reply_markup=await get_admin_menu(),
+        )
+    else:
+        await bot.send_message(
+            message.from_user.id,
+            "Ошибка при разблокировке пользователя",
             reply_markup=await get_admin_menu(),
         )
 

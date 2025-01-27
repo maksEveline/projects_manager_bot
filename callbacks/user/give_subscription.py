@@ -62,8 +62,9 @@ async def give_rate_sub(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await state.update_data({"msg_id": callback.message.message_id})
 
     await callback.message.edit_text(
-        "Напишите user_id пользователя, которому вы хотите выдать подписку",
+        "Напишите user_id пользователя или <b>username без @</b>, которому вы хотите выдать подписку",
         reply_markup=await get_cancel_menu(),
+        parse_mode="HTML",
     )
 
 
@@ -73,42 +74,59 @@ async def give_rate_sub_user_id(message: Message, state: FSMContext, bot: Bot):
     project_id = data["project_id"]
     rate_id = data["rate_id"]
     rate_info = await db.get_rate(rate_id)
+    project = await db.get_project(project_id)
+
+    await bot.delete_message(message.chat.id, message.message_id)
 
     try:
         user_id = int(message.text)
-        user = await db.get_user(user_id)
-
-        if user is None:
-            await message.answer("Пользователь не найден")
+    except ValueError:
+        user_id = await db.get_userid_by_username(message.text.lower())
+        if user_id is None:
+            await bot.edit_message_text(
+                text=f"Пользователь {message.text} не найден",
+                chat_id=message.chat.id,
+                message_id=data["msg_id"],
+            )
             return
 
-        now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        await db.add_user_purchase(user_id, project_id, rate_id, now_time)
+    user = await db.get_user(user_id)
 
-        if rate_info["duration_type"] == "hours":
-            sub_time = rate_info["duration"]
-        elif rate_info["duration_type"] == "days":
-            sub_time = rate_info["duration"] * 24
-
-        sub_timestamp = get_timestamp(sub_time)
-
-        await db.add_active_subscriptions(
-            user_id, project_id, rate_id, date=sub_timestamp, hourses=sub_time
-        )
-
-        await state.update_data({"user_id": user_id})
-
+    if user is None:
         await bot.edit_message_text(
-            text=f"Подписка выдана пользователю {user['user_id']}",
+            text=f"Пользователь {message.text} не найден",
             chat_id=message.chat.id,
             message_id=data["msg_id"],
-            reply_markup=await get_back_to_main_menu(),
         )
-        await bot.delete_message(message.chat.id, message.message_id)
+        return
 
-        await state.clear()
+    now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await db.add_user_purchase(user_id, project_id, rate_id, now_time)
 
-    except ValueError:
-        await message.answer(
-            "Введите корректный user_id", reply_markup=await get_cancel_menu()
-        )
+    if rate_info["duration_type"] == "hours":
+        sub_time = rate_info["duration"]
+    elif rate_info["duration_type"] == "days":
+        sub_time = rate_info["duration"] * 24
+
+    sub_timestamp = get_timestamp(sub_time)
+
+    await db.add_active_subscriptions(
+        user_id, project_id, rate_id, date=sub_timestamp, hourses=sub_time
+    )
+
+    await state.update_data({"user_id": user_id})
+
+    await bot.send_message(
+        user_id,
+        f"Вы получили подписку на проект {project['name']}",
+    )
+
+    await bot.edit_message_text(
+        text=f"Подписка выдана пользователю {user['user_id']}",
+        chat_id=message.chat.id,
+        message_id=data["msg_id"],
+        reply_markup=await get_back_to_main_menu(),
+    )
+    await bot.delete_message(message.chat.id, message.message_id)
+
+    await state.clear()

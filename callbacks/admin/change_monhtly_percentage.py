@@ -22,7 +22,7 @@ async def change_monhtly_percentage(
 ):
     monthly_percentage = get_project_percentage()
     await bot.edit_message_text(
-        text=f"📋 Текущий ежемесячный %: <b>{monthly_percentage}</b>\n\n📋 Напишите новый ежемесячный %",
+        text=f"📋 Текущий ежемесячный %: <b>{monthly_percentage * 100}</b>\n\n📋 Напишите новый ежемесячный %",
         reply_markup=await get_cancel_menu(),
         chat_id=callback.from_user.id,
         message_id=callback.message.message_id,

@@ -29,8 +29,17 @@ async def get_admin_menu() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
-                text="Изменить цены на паки проектов",
-                callback_data="change_project_prices",
+                text="Изменить цену за проект", callback_data="change_price_per_project"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="Изменить ссылку на суппорт",
+                callback_data="change_support_link",
+            ),
+            InlineKeyboardButton(
+                text="Изменить ссылку на канал",
+                callback_data="change_update_channel_link",
             ),
         ],
     ]

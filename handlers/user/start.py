@@ -21,11 +21,12 @@ async def start_func(msg: Message, bot: Bot):
 
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
-    username = msg.from_user.username
+    username = msg.from_user.username.lower()
     if username is None:
         username = "Unknown"
 
     await db.add_user_if_not_exists(user_id, first_name, username)
+    await db.update_username(user_id, username)
 
     await msg.answer(
         text=f"👋 Привет, <b>{msg.from_user.full_name}</b>",
@@ -43,17 +44,25 @@ async def splited_start(msg: Message, bot: Bot):
 
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
-    username = msg.from_user.username
+    username = msg.from_user.username.lower()
     if username is None:
         username = "Unknown"
 
     await db.add_user_if_not_exists(user_id, first_name, username)
+    await db.update_username(user_id, username)
 
     project_info = msg.text.split("/start ")[-1]
     project_id = int(project_info.split("_")[-1])
 
     project = await db.get_project(project_id)
     rates = await db.get_rates(project_id)
+
+    if project["project_type"] == "fixed" and project["is_active"] == 0:
+        await msg.answer(
+            text="🚫 Проект не активен",
+            reply_markup=await get_main_menu_user(),
+        )
+        return
 
     answ_msg = f"🤑 Вы хотите купить проект <b>{project['name']}</b>\n\n"
     kb = []

@@ -5,7 +5,6 @@ from aiogram.fsm.context import FSMContext
 from keyboards.user.user_inline import get_rate_settings_menu
 from data.database import db
 
-from config import DURATION_TYPES
 from utils.time_utils import format_hours
 
 router = Router()

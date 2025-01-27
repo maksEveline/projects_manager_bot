@@ -16,6 +16,8 @@ from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 
 from utils.routers import create_router_with_user_middleware
 
+from config import DOWNLOADS_DIR
+
 router = create_router_with_user_middleware()
 
 
@@ -69,10 +71,9 @@ async def newsletter_project_image(message: Message, state: FSMContext, bot: Bot
         data = await state.get_data()
         photo = message.photo[-1]
         file = await bot.get_file(photo.file_id)
-        downloads_dir = "downloads"
-        if not os.path.exists(downloads_dir):
-            os.makedirs(downloads_dir)
-        file_path = os.path.join(downloads_dir, f"{photo.file_id}.jpg")
+        if not os.path.exists(DOWNLOADS_DIR):
+            os.makedirs(DOWNLOADS_DIR)
+        file_path = os.path.join(DOWNLOADS_DIR, f"{photo.file_id}.jpg")
         await bot.download_file(file.file_path, file_path)
         await bot.delete_message(message.chat.id, message.message_id)
 

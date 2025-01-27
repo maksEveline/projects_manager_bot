@@ -1,6 +1,7 @@
 import aiosqlite
 
 from config import DB_PATH
+from utils.time_utils import get_timestamp
 
 
 class Database:
@@ -23,13 +24,26 @@ class Database:
                 )
             """
             )
+            # 0 - выключено, 1 - включено
             await self.db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS project (
                     project_id INTEGER PRIMARY KEY,
                     name TEXT,
                     user_id INTEGER,
-                    project_type TEXT
+                    project_type TEXT,
+                    payment_type TEXT DEFAULT 'cryptobot',
+                    auto_refill INTEGER DEFAULT 1, 
+                    subscription_end_date TEXT,
+                    is_active INTEGER DEFAULT 1
+                )
+            """
+            )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS payment_requisites (
+                    project_id INTEGER,
+                    requisites TEXT
                 )
             """
             )
@@ -107,6 +121,28 @@ class Database:
                 )
             """
             )
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS payment_requests (
+                    request_id INTEGER,
+                    user_id INTEGER,
+                    rate_id INTEGER
+                )
+            """
+            )
+
+            await self.db.execute(
+                """
+            CREATE TABLE IF NOT EXISTS alerts_sent (
+                alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                project_id INTEGER,
+                rate_id INTEGER,
+                alert_type TEXT,
+                timestamp TEXT
+            )
+            """
+            )
 
             await self.db.commit()
 
@@ -143,14 +179,9 @@ class Database:
             print(f"Ошибка при добавлении пользователя: {e}")
             return False
 
-    async def add_project(self, name: str, user_id: int, project_type: str) -> bool:
-        """
-        Добавляет новый проект в базу данных.
-
-        :param name: Название проекта
-        :param user_id: ID пользователя, создающего проект
-        :return: True если проект успешно добавлен, False если проект с таким именем уже существует
-        """
+    async def add_project(
+        self, name: str, user_id: int, project_type: str, project_sub_end: str
+    ) -> bool:
         try:
             async with self.db.execute(
                 "SELECT 1 FROM project WHERE name = ? AND user_id = ?", (name, user_id)
@@ -159,8 +190,10 @@ class Database:
                     return False
 
             await self.db.execute(
-                "INSERT INTO project (name, user_id, project_type) VALUES (?, ?, ?)",
-                (name, user_id, project_type),
+                """INSERT INTO project 
+                   (name, user_id, project_type, payment_type, auto_refill, subscription_end_date) 
+                   VALUES (?, ?, ?, 'cryptobot', 0, ?)""",
+                (name, user_id, project_type, project_sub_end),
             )
             await self.db.commit()
             return True
@@ -279,7 +312,7 @@ class Database:
         """
         try:
             async with self.db.execute(
-                "SELECT project_id, name, user_id, project_type FROM project WHERE project_id = ?",
+                "SELECT project_id, name, user_id, project_type, payment_type, auto_refill, subscription_end_date, is_active FROM project WHERE project_id = ?",
                 (project_id,),
             ) as cursor:
                 row = await cursor.fetchone()
@@ -289,6 +322,10 @@ class Database:
                         "name": row[1],
                         "user_id": row[2],
                         "project_type": row[3],
+                        "payment_type": row[4],
+                        "auto_refill": row[5],
+                        "subscription_end_date": row[6],
+                        "is_active": row[7],
                     }
                 return None
         except Exception as e:
@@ -1163,6 +1200,510 @@ class Database:
             return True
         except Exception as e:
             print(f"Ошибка при обновлении типа проекта: {e}")
+            return False
+
+    async def get_statistic(self) -> dict | None:
+        """
+        Получает общую статистику для администратора.
+
+        Возвращает словарь, содержащий:
+        - Общее количество пользователей
+        - Общее количество проектов
+        - Общее количество активных подписок
+        - Общую сумму на балансах пользователей
+        - Общую сумму всех покупок
+        - Количество заблокированных пользователей
+        - Статистику по типам проектов
+        - Топ пользователей по балансу
+        - Топ проектов по количеству подписчиков
+
+        :return: Словарь со статистикой или None в случае ошибки
+        """
+        try:
+            async with self.db.execute("SELECT COUNT(*) FROM users") as cursor:
+                total_users = (await cursor.fetchone())[0]
+
+            async with self.db.execute("SELECT COUNT(*) FROM project") as cursor:
+                total_projects = (await cursor.fetchone())[0]
+
+            async with self.db.execute(
+                "SELECT COUNT(*) FROM active_subscriptions"
+            ) as cursor:
+                total_active_subs = (await cursor.fetchone())[0]
+
+            async with self.db.execute("SELECT SUM(balance) FROM users") as cursor:
+                total_balance = (await cursor.fetchone())[0] or 0
+
+            async with self.db.execute(
+                """
+                SELECT SUM(r.price) 
+                FROM purchases p 
+                JOIN rate r ON p.rate_id = r.rate_id
+            """
+            ) as cursor:
+                total_purchases = (await cursor.fetchone())[0] or 0
+
+            async with self.db.execute("SELECT COUNT(*) FROM blocked_users") as cursor:
+                total_blocked = (await cursor.fetchone())[0]
+
+            async with self.db.execute(
+                """
+                SELECT project_type, COUNT(*) as count 
+                FROM project 
+                GROUP BY project_type
+            """
+            ) as cursor:
+                project_types = {row[0]: row[1] for row in await cursor.fetchall()}
+
+            async with self.db.execute(
+                """
+                SELECT user_id, first_name, username, balance 
+                FROM users 
+                ORDER BY balance DESC 
+                LIMIT 5
+            """
+            ) as cursor:
+                top_users = [
+                    {
+                        "user_id": row[0],
+                        "first_name": row[1],
+                        "username": row[2],
+                        "balance": row[3],
+                    }
+                    for row in await cursor.fetchall()
+                ]
+
+            async with self.db.execute(
+                """
+                SELECT 
+                    p.project_id,
+                    p.name,
+                    COUNT(DISTINCT a_sub.user_id) as subscribers
+                FROM project p
+                LEFT JOIN active_subscriptions a_sub ON p.project_id = a_sub.project_id
+                GROUP BY p.project_id, p.name
+                ORDER BY subscribers DESC
+                LIMIT 5
+                """
+            ) as cursor:
+                top_projects = [
+                    {"project_id": row[0], "name": row[1], "subscribers": row[2]}
+                    for row in await cursor.fetchall()
+                ]
+
+            return {
+                "total_users": total_users,
+                "total_projects": total_projects,
+                "total_active_subscriptions": total_active_subs,
+                "total_balance": total_balance,
+                "total_purchases": total_purchases,
+                "total_blocked_users": total_blocked,
+                "project_types": project_types,
+                "top_users_by_balance": top_users,
+                "top_projects_by_subscribers": top_projects,
+            }
+
+        except Exception as e:
+            print(f"Ошибка при получении статистики: {e}")
+            return None
+
+    async def get_payment_requisites(self, project_id: int) -> str | None:
+        """
+        Получает реквизиты платежа для проекта.
+
+        :param project_id: ID проекта
+        :return: Строка с реквизитами или None, если реквизиты не найдены
+        """
+        try:
+            async with self.db.execute(
+                "SELECT requisites FROM payment_requisites WHERE project_id = ?",
+                (project_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            print(f"Ошибка при получении реквизитов платежа: {e}")
+            return None
+
+    async def update_payment_requisites(self, project_id: int, requisites: str) -> bool:
+        """
+        Добавляет или обновляет реквизиты платежа для проекта.
+
+        :param project_id: ID проекта
+        :param requisites: Строка с реквизитами
+        :return: True если операция прошла успешно, False в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                "SELECT 1 FROM payment_requisites WHERE project_id = ?", (project_id,)
+            ) as cursor:
+                exists = await cursor.fetchone() is not None
+
+            if exists:
+                await self.db.execute(
+                    "UPDATE payment_requisites SET requisites = ? WHERE project_id = ?",
+                    (requisites, project_id),
+                )
+            else:
+                await self.db.execute(
+                    "INSERT INTO payment_requisites (project_id, requisites) VALUES (?, ?)",
+                    (project_id, requisites),
+                )
+
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении реквизитов платежа: {e}")
+            return False
+
+    async def update_payment_type(self, project_id: int, payment_type: str) -> bool:
+        """
+        Обновляет способ оплаты для проекта.
+
+        :param project_id: ID проекта
+        :param payment_type: Новый способ оплаты
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE project SET payment_type = ? WHERE project_id = ?",
+                (payment_type, project_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении способа оплаты проекта: {e}")
+            return False
+
+    async def add_payment_request(
+        self, request_id: int, user_id: int, rate_id: int
+    ) -> bool:
+        """
+        Добавляет новый запрос на оплату в таблицу payment_requests.
+
+        :param request_id: ID запроса
+        :param user_id: ID пользователя
+        :param rate_id: ID тарифа
+        :return: True если запрос успешно добавлен, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                """
+                INSERT INTO payment_requests (request_id, user_id, rate_id)
+                VALUES (?, ?, ?)
+                """,
+                (request_id, user_id, rate_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при добавлении запроса на оплату: {e}")
+            return False
+
+    async def delete_payment_request(self, request_id: int) -> bool:
+        """
+        Удаляет запрос на оплату из таблицы payment_requests.
+
+        :param request_id: ID запроса для удаления
+        :return: True если запрос успешно удален, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "DELETE FROM payment_requests WHERE request_id = ?", (request_id,)
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при удалении запроса на оплату: {e}")
+            return False
+
+    async def get_payment_request(self, request_id: int) -> dict | None:
+        """
+        Получает информацию о запросе на оплату по его ID.
+
+        :param request_id: ID запроса
+        :return: Словарь с информацией о запросе или None, если запрос не найден
+        """
+        try:
+            async with self.db.execute(
+                """
+                SELECT request_id, user_id, rate_id
+                FROM payment_requests 
+                WHERE request_id = ?
+                """,
+                (request_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return {"request_id": row[0], "user_id": row[1], "rate_id": row[2]}
+                return None
+        except Exception as e:
+            print(f"Ошибка при получении информации о запросе на оплату: {e}")
+            return None
+
+    async def update_username(self, user_id: int, new_username: str) -> bool:
+        """
+        Обновляет username пользователя в таблице users.
+
+        :param user_id: ID пользователя
+        :param new_username: Новый username пользователя
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE users SET username = ? WHERE user_id = ?",
+                (new_username, user_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении username пользователя: {e}")
+            return False
+
+    async def get_userid_by_username(self, username: str) -> int | None:
+        """
+        Получает user_id пользователя по его username.
+
+        :param username: Username пользователя
+        :return: ID пользователя или None, если пользователь не найден
+        """
+        try:
+            async with self.db.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            print(f"Ошибка при получении user_id по username: {e}")
+            return None
+
+    async def update_auto_refill(self, project_id: int, auto_refill: bool) -> bool:
+        """
+        Обновляет значение auto_refill для проекта.
+
+        :param project_id: ID проекта
+        :param auto_refill: True для включения, False для выключения
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            value = 1 if auto_refill else 0
+            await self.db.execute(
+                "UPDATE project SET auto_refill = ? WHERE project_id = ?",
+                (value, project_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении auto_refill: {e}")
+            return False
+
+    async def get_projects(self) -> list[dict] | None:
+        """
+        Получает информацию о всех проектах.
+
+        :return: Список словарей с информацией о проектах или None в случае ошибки
+        """
+        try:
+            async with self.db.execute(
+                """
+                SELECT 
+                    project_id, 
+                    name, 
+                    user_id, 
+                    project_type, 
+                    payment_type, 
+                    auto_refill, 
+                    subscription_end_date, 
+                    is_active
+                FROM project
+                """
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [
+                    {
+                        "project_id": row[0],
+                        "name": row[1],
+                        "user_id": row[2],
+                        "project_type": row[3],
+                        "payment_type": row[4],
+                        "auto_refill": row[5],
+                        "subscription_end_date": row[6],
+                        "is_active": row[7],
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            print(f"Ошибка при получении информации о проектах: {e}")
+            return None
+
+    async def update_project_subscription_end_date(
+        self, project_id: int, new_date: str
+    ) -> bool:
+        """
+        Обновляет дату окончания подписки проекта.
+
+        :param project_id: ID проекта
+        :param new_date: Новая дата окончания подписки
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE project SET subscription_end_date = ? WHERE project_id = ?",
+                (new_date, project_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении даты окончания подписки проекта: {e}")
+            return False
+
+    async def update_is_active_project(self, project_id: int, is_active: bool) -> bool:
+        """
+        Обновляет статус активности проекта.
+
+        :param project_id: ID проекта
+        :param is_active: True для активации, False для деактивации
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            value = 1 if is_active else 0
+            await self.db.execute(
+                "UPDATE project SET is_active = ? WHERE project_id = ?",
+                (value, project_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении статуса активности проекта: {e}")
+            return False
+
+    async def check_alert_sent(
+        self, user_id: int, project_id: int, rate_id: int, alert_type: str
+    ) -> bool:
+        query = """
+        SELECT 1 FROM alerts_sent
+        WHERE user_id = ? AND project_id = ? AND rate_id = ? AND alert_type = ?
+        LIMIT 1
+        """
+        async with self.db.execute(
+            query, (user_id, project_id, rate_id, alert_type)
+        ) as cursor:
+            return await cursor.fetchone() is not None
+
+    async def mark_alert_sent(
+        self, user_id: int, project_id: int, rate_id: int, alert_type: str
+    ):
+        query = """
+        INSERT INTO alerts_sent (user_id, project_id, rate_id, alert_type, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+        """
+        timestamp = get_timestamp(0)
+        await self.db.execute(
+            query, (user_id, project_id, rate_id, alert_type, timestamp)
+        )
+        await self.db.commit()
+
+    async def get_projects_statistics(self) -> list[dict] | None:
+        """
+        Получает статистику по всем проектам.
+
+        Возвращает список словарей, содержащий:
+        - Название проекта
+        - Количество клиентов (активных подписчиков)
+        - Username владельца
+        - User ID владельца
+
+        :return: Список словарей со статистикой или None в случае ошибки
+        """
+        try:
+            query = """
+                SELECT 
+                    p.name as project_name,
+                    COUNT(DISTINCT a_sub.user_id) as clients_count,
+                    u.username as owner_username,
+                    p.user_id as owner_id
+                FROM project p
+                LEFT JOIN active_subscriptions a_sub ON p.project_id = a_sub.project_id
+                LEFT JOIN users u ON p.user_id = u.user_id
+                GROUP BY p.project_id, p.name, u.username, p.user_id
+                ORDER BY clients_count DESC
+            """
+
+            async with self.db.execute(query) as cursor:
+                rows = await cursor.fetchall()
+                return [
+                    {
+                        "project_name": row[0],
+                        "clients_count": row[1],
+                        "owner_username": row[2],
+                        "owner_id": row[3],
+                    }
+                    for row in rows
+                ]
+
+        except Exception as e:
+            print(f"Ошибка при получении статистики проектов: {e}")
+            return None
+
+    async def update_subscription_date_by_id(self, sub_id: int, new_date: str) -> bool:
+        """
+        Обновляет дату подписки по её ID.
+
+        :param sub_id: ID подписки
+        :param new_date: Новая дата подписки
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE active_subscriptions SET date = ? WHERE sub_id = ?",
+                (new_date, sub_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении даты подписки: {e}")
+            return False
+
+    async def update_project_owner(self, project_id: int, owner_id: int) -> bool:
+        """
+        Обновляет владельца проекта.
+
+        :param project_id: ID проекта
+        :param owner_id: ID нового владельца
+        :return: True если обновление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                "UPDATE project SET user_id = ? WHERE project_id = ?",
+                (owner_id, project_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении владельца проекта: {e}")
+            return False
+
+    async def delete_alerts(self, user_id: int, project_id: int, rate_id: int) -> bool:
+        """
+        Удаляет все записи из таблицы alerts_sent для указанных параметров.
+
+        :param user_id: ID пользователя
+        :param project_id: ID проекта
+        :param rate_id: ID тарифа
+        :return: True если удаление прошло успешно, False в случае ошибки
+        """
+        try:
+            await self.db.execute(
+                """
+                DELETE FROM alerts_sent 
+                WHERE user_id = ? AND project_id = ? AND rate_id = ?
+                """,
+                (user_id, project_id, rate_id),
+            )
+            await self.db.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при удалении оповещений: {e}")
             return False
 
 
