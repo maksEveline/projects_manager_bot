@@ -72,12 +72,14 @@ async def change_balance(message: Message, state: FSMContext, bot: Bot):
                 f"Баланс пользователя {user_id} успешно обновлен",
                 reply_markup=await get_admin_menu(),
             )
+            await state.clear()
         else:
             await bot.send_message(
                 message.from_user.id,
                 "Ошибка при обновлении баланса пользователя",
                 reply_markup=await get_admin_menu(),
             )
+            await state.clear()
     except ValueError:
         await bot.send_message(
             message.from_user.id,

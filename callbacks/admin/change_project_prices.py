@@ -74,3 +74,5 @@ async def change_count_price_process(message: Message, state: FSMContext, bot: B
         await message.answer("Цена успешно обновлена")
     else:
         await message.answer("Произошла ошибка при обновлении цены")
+
+    await state.clear()

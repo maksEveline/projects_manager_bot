@@ -81,7 +81,7 @@ async def unblock_user(message: Message, state: FSMContext, bot: Bot):
         if user_id is None:
             await bot.send_message(
                 message.from_user.id,
-                f"Пользователь {message.text} не найден",
+                f"Пользователь {message.text} не найден\n<b>Попробуйте написать ещё раз</b>",
                 reply_markup=await get_admin_menu(),
             )
             return

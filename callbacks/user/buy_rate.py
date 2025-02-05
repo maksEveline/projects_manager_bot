@@ -191,7 +191,7 @@ async def paid_request(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await bot.edit_message_text(
         chat_id=callback.message.chat.id,
         message_id=callback.message.message_id,
-        text="🖼️ Отправьте скриншот оплаты ИЛИ напишите текстом",
+        text="🖼️ Отправьте скриншот оплаты или напишите hash/ссылку перевода",
         reply_markup=await get_cancel_menu(),
     )
 
@@ -284,7 +284,7 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
         ]
         keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
 
-        # отправляем в личку админа
+        # отправляем в личку владельца проекта
         await bot.send_message(
             chat_id=project_info["user_id"],
             text=admin_msg_text,
