@@ -10,6 +10,12 @@ from utils.time_utils import get_timestamp, format_timestamp
 router = create_router_with_user_middleware()
 
 
+def reverse_date(date_str: str) -> str:
+    date_part, time_part = date_str.split(" ")
+    reversed_date = ".".join(date_part.split("-")[::-1])
+    return f"{reversed_date} {time_part}"
+
+
 @router.callback_query(F.data.startswith("confirm_pay_request_"))
 async def confirm_pay_request(callback: CallbackQuery, bot: Bot):
     request_id = callback.data.split("_")[-1]
@@ -37,8 +43,9 @@ async def confirm_pay_request(callback: CallbackQuery, bot: Bot):
     now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     await db.add_user_purchase(user_id, rate_info["project_id"], rate_id, now_time)
 
+    reversed_date = reverse_date(formatted_time)
     answ_text = (
-        f"✅ Тариф успешно приобретен\nПодписка действует до: {formatted_time}\n\n"
+        f"✅ Тариф успешно приобретен\nПодписка действует до: {reversed_date}\n\n"
     )
 
     await db.delete_alerts(int(user_id), int(project_id), int(rate_id))

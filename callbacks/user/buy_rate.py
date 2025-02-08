@@ -26,6 +26,12 @@ from config import DOWNLOADS_DIR
 router = create_router_with_user_middleware()
 
 
+def reverse_date(date_str: str) -> str:
+    date_part, time_part = date_str.split(" ")
+    reversed_date = ".".join(date_part.split("-")[::-1])
+    return f"{reversed_date} {time_part}"
+
+
 @router.callback_query(F.data.startswith("buy_rate_"))
 async def buy_rate(callback: CallbackQuery, bot: Bot):
     rate_id = int(callback.data.split("_")[-1])
@@ -121,8 +127,10 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
 
         await db.delete_alerts(int(user_id), int(project_id), int(rate_id))
 
+        reversed_date = reverse_date(formatted_time)
+
         answ_text = (
-            f"✅ Тариф успешно приобретен\nПодписка действует до: {formatted_time}\n\n"
+            f"✅ Тариф успешно приобретен\nПодписка действует до: {reversed_date}\n\n"
         )
 
         # пробуем разбанить пользователя в чатах и каналах если у него уже была подписка

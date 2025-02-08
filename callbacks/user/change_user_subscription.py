@@ -71,6 +71,13 @@ async def change_user_subscription_handler(
         await state.update_data({"user_info": user_info})
         await state.update_data({"project_id": project_id})
 
+        rate_id = None
+        for sub in user_info:
+            if int(sub["project_id"]) == int(project_id):
+                rate_id = sub["rate_id"]
+
+        await state.update_data({"rate_id": rate_id})
+
         await bot.delete_message(message.chat.id, message.message_id)
 
         answ_text = f"Проект: {user_info[0]['project_name']}\n\n"
@@ -154,9 +161,20 @@ async def yes_exclude_user(callback: CallbackQuery, state: FSMContext, bot: Bot)
     user_id = int(callback.data.split("yes_exclude_user_")[-1])
     data = await state.get_data()
     project_id = data["project_id"]
-
+    rate_id = data["rate_id"]
+    project_info = await db.get_project(project_id)
     for sub_id in data["all_user_subids"]:
         await db.update_subscription_date_by_id(int(sub_id), "1737008061")
+
+    await db.mark_alert_sent(user_id, project_id, rate_id, "3_days")
+    await db.mark_alert_sent(user_id, project_id, rate_id, "1_day")
+    await db.mark_alert_sent(user_id, project_id, rate_id, "1_hour")
+
+    await bot.send_message(
+        user_id,
+        f"<b>Ваша подписка на проект {project_info['name']} закончилась! Благодарим за использование</b>",
+        parse_mode="HTML",
+    )
 
     await bot.edit_message_text(
         text="🥳 Пользователь успешно исключен",

@@ -64,14 +64,11 @@ async def splited_start(msg: Message, bot: Bot):
         )
         return
 
-    answ_msg = f"🤑 Вы хотите купить проект <b>{project['name']}</b>\n\n"
+    answ_msg = f"🤑 Вы хотите купить проект <b>{project['name']}</b>\n\nВыберите тарифный план ниже"
     kb = []
 
     for rate in rates:
         dur_type = DURATION_TYPES[rate["duration_type"]]
-        answ_msg += (
-            f"{rate['name']} - {rate['duration']} {dur_type}({rate['price']}$)\n"
-        )
         kb.append(
             [
                 InlineKeyboardButton(

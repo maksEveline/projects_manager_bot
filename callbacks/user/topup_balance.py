@@ -13,6 +13,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from data.database import db
 from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
+from utils.crypto_utils import convert_usdt_to_crypto
 
 from config import CRYPTOBOT_TOKEN
 
@@ -25,6 +26,7 @@ def add_commission(num):
 
 class TopupBalance(StatesGroup):
     sum = State()
+    crypto = State()
     confirm = State()
 
 
@@ -50,13 +52,62 @@ async def topup_balance_process_sum(message: Message, state: FSMContext, bot: Bo
     try:
         sum = float(message.text)
         await state.update_data({"sum": sum})
+
+        kb = [
+            [InlineKeyboardButton(text="USDT", callback_data="USDT")],
+            [InlineKeyboardButton(text="ETH", callback_data="ETH")],
+            [InlineKeyboardButton(text="LTC", callback_data="LTC")],
+            [InlineKeyboardButton(text="BTC", callback_data="BTC")],
+            [InlineKeyboardButton(text="BNB", callback_data="BNB")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_method")],
+        ]
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
+
         await bot.delete_message(
             chat_id=message.from_user.id, message_id=message.message_id
         )
 
+        await bot.edit_message_text(
+            text="Выберите криптовалюту",
+            reply_markup=keyboard,
+            chat_id=message.from_user.id,
+            message_id=msg_id,
+        )
+
+        await state.set_state(TopupBalance.crypto)
+    except Exception as e:
+        print(e)
+        await bot.delete_message(
+            chat_id=message.from_user.id, message_id=message.message_id
+        )
+        await bot.edit_message_text(
+            text="❌ Введите корректное число\n\n📋 Напишите сумму пополнения в $",
+            reply_markup=await get_cancel_menu(),
+            chat_id=message.from_user.id,
+            message_id=msg_id,
+        )
+
+
+@router.callback_query(TopupBalance.crypto)
+async def topup_balance_process_crypto(
+    callback: CallbackQuery, state: FSMContext, bot: Bot
+):
+    data = await state.get_data()
+    msg_id = data.get("msg_id")
+    sum = data.get("sum")
+
+    try:
+        crypto = callback.data
+        await state.update_data({"crypto": crypto})
+
+        final_sum = add_commission(sum)
+
         cryptoBot = AsyncCryptoBot(CRYPTOBOT_TOKEN)
         order_crypto_bot = await cryptoBot.create_invoice(
-            add_commission(sum), currency_type="crypto", asset="USDT"
+            convert_usdt_to_crypto(final_sum, crypto),
+            currency_type="crypto",
+            asset=crypto,
         )
         await state.update_data({"invoice_id": order_crypto_bot.invoice_id})
 
@@ -81,7 +132,7 @@ async def topup_balance_process_sum(message: Message, state: FSMContext, bot: Bo
         await bot.edit_message_text(
             text=f"Сумма к оплате: {add_commission(sum)}$",
             reply_markup=keyboard,
-            chat_id=message.from_user.id,
+            chat_id=callback.from_user.id,
             message_id=msg_id,
         )
 
@@ -89,12 +140,12 @@ async def topup_balance_process_sum(message: Message, state: FSMContext, bot: Bo
 
     except ValueError:
         await bot.delete_message(
-            chat_id=message.from_user.id, message_id=message.message_id
+            chat_id=callback.from_user.id, message_id=callback.message.message_id
         )
         await bot.edit_message_text(
             text="❌ Введите корректное число\n\n📋 Напишите сумму пополнения в $",
             reply_markup=await get_cancel_menu(),
-            chat_id=message.from_user.id,
+            chat_id=callback.from_user.id,
             message_id=msg_id,
         )
 

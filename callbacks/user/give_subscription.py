@@ -56,7 +56,8 @@ async def start_give_subscription(callback: CallbackQuery, state: FSMContext, bo
 
 @router.callback_query(F.data.startswith("give_rate_sub"))
 async def give_rate_sub(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    rate_id = callback.data.split("_")[3]
+    rate_id = callback.data.split("_")[-1]
+    project_id = callback.data.split("_")[-2]
     await state.update_data({"rate_id": rate_id})
     await state.set_state(GiveSubscription.user_id)
     await state.update_data({"msg_id": callback.message.message_id})
@@ -75,6 +76,7 @@ async def give_rate_sub_user_id(message: Message, state: FSMContext, bot: Bot):
     rate_id = data["rate_id"]
     rate_info = await db.get_rate(rate_id)
     project = await db.get_project(project_id)
+    project_chats = await db.get_project_chats_and_channels(project_id)
 
     await bot.delete_message(message.chat.id, message.message_id)
 
@@ -116,9 +118,16 @@ async def give_rate_sub_user_id(message: Message, state: FSMContext, bot: Bot):
 
     await state.update_data({"user_id": user_id})
 
+    answ_text = f"Вы получили подписку на проект {project['name']}\n\n"
+
+    for chat in project_chats:
+        answ_text += f"<b>{chat['name']}({chat['type']})</b> : {chat['link']}\n"
+
     await bot.send_message(
         user_id,
-        f"Вы получили подписку на проект {project['name']}",
+        answ_text,
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
 
     await bot.edit_message_text(
