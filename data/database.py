@@ -1706,5 +1706,39 @@ class Database:
             print(f"Ошибка при удалении оповещений: {e}")
             return False
 
+    async def get_username_by_id(self, user_id: int) -> str | None:
+        """
+        Получает username пользователя по его ID.
+
+        :param user_id: ID пользователя
+        :return: Username пользователя или None, если пользователь не найден
+        """
+        try:
+            async with self.db.execute(
+                "SELECT username FROM users WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            print(f"Ошибка при получении username по user_id: {e}")
+            return None
+
+    async def get_firstname_by_userid(self, user_id: int) -> str | None:
+        """
+        Получает first_name пользователя по его ID.
+
+        :param user_id: ID пользователя
+        :return: First name пользователя или None, если пользователь не найден
+        """
+        try:
+            async with self.db.execute(
+                "SELECT first_name FROM users WHERE user_id = ?", (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            print(f"Ошибка при получении first_name по user_id: {e}")
+            return None
+
 
 db = Database(DB_PATH)

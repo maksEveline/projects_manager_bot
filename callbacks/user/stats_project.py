@@ -18,6 +18,7 @@ router = create_router_with_user_middleware()
 async def stats_project(callback: CallbackQuery, bot: Bot):
     project_id = callback.data.split("stats_project_")[-1]
     rates = await db.get_rates(project_id)
+    active_subscriptions = await db.get_active_subscriptions()
 
     stats_text = "📊 Статистика по доходам проекта:\n\n"
 
@@ -40,15 +41,21 @@ async def stats_project(callback: CallbackQuery, bot: Bot):
             stats_text += f"👥 Участников: {total_purchases}\n"
             stats_text += f"💰 Доход: {rate_income}$\n"
 
-            # stats_text += "Список покупателей:\n"
-            for purchase in purchases:
-                username = (
-                    purchase["username"] if purchase["username"] else "Нет username"
-                )
-                # stats_text += f"@{username} ID: <code>{purchase['user_id']}</code> | {purchase['first_name']}\n"
-                rate_data.append(
-                    f"{purchase['first_name']} (@{username if purchase['username'] else 'Нет username'}) ID: {purchase['user_id']} | {purchase['date']}"
-                )
+            # for purchase in purchases:
+            #     username = (
+            #         purchase["username"] if purchase["username"] else "Нет username"
+            #     )
+            #     rate_data.append(
+            #         f"{purchase['first_name']} (@{username if purchase['username'] else 'Нет username'}) ID: {purchase['user_id']} | {purchase['date']}"
+            #     )
+            for sub in active_subscriptions:
+                if int(sub["project_id"]) == int(project_id):
+                    if int(sub["rate_id"]) == int(rate["rate_id"]):
+                        username = await db.get_username_by_id(sub["user_id"])
+                        first_name = await db.get_firstname_by_userid(sub["user_id"])
+                        rate_data.append(
+                            f"{first_name} (@{username if username else 'Нет username'}) ID: {sub['user_id']} | {format_timestamp(float(sub['date']))}"
+                        )
             stats_text += "\n"
         else:
             stats_text += (

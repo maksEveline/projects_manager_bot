@@ -123,6 +123,12 @@ async def give_rate_sub_user_id(message: Message, state: FSMContext, bot: Bot):
     for chat in project_chats:
         answ_text += f"<b>{chat['name']}({chat['type']})</b> : {chat['link']}\n"
 
+        try:
+            await bot.unban_chat_member(chat["id"], user_id)
+            print(f"Пользователь {user_id} разбанен в чате {chat['id']}")
+        except Exception as e:
+            ...
+
     await bot.send_message(
         user_id,
         answ_text,
