@@ -1,7 +1,5 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from datetime import datetime
-import pytz
 
 
 from handlers.user import start
