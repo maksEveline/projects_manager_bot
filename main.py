@@ -1,5 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
+from datetime import datetime
+import pytz
 
 
 from handlers.user import start
@@ -53,12 +55,15 @@ from callbacks.admin import (
     change_price_per_project,
     change_support_link,
     change_update_channel_link,
+    open_backups_menu,
+    make_backup,
 )
 from data.database import db
 from config import TOKEN
 from utils.subscriptions_checker import checker_func
 from utils.projects_manager import projects_manager_func
 from utils.users_subs_checker import users_subs_checker_func
+from callbacks.admin.make_backup import make_daily_backup
 
 
 async def main():
@@ -69,6 +74,7 @@ async def main():
     asyncio.create_task(checker_func(bot))
     asyncio.create_task(projects_manager_func(bot))
     asyncio.create_task(users_subs_checker_func(bot))
+    asyncio.create_task(make_daily_backup(bot))
 
     dp.include_routers(
         start.router,
@@ -119,6 +125,8 @@ async def main():
         change_support_link.router,
         change_update_channel_link.router,
         transfer_project.router,
+        open_backups_menu.router,
+        make_backup.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

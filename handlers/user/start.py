@@ -8,7 +8,7 @@ from aiogram.types import (
 
 from data.database import db
 from keyboards.user.user_inline import get_main_menu_user
-from config import DURATION_TYPES
+from config import DURATION_TYPES, ADMIN_IDS
 from utils.routers import create_router_with_user_middleware
 
 router = create_router_with_user_middleware()
@@ -21,12 +21,24 @@ async def start_func(msg: Message, bot: Bot):
 
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
-    username = msg.from_user.username.lower()
+    username = msg.from_user.username
     if username is None:
         username = "Unknown"
 
-    await db.add_user_if_not_exists(user_id, first_name, username)
+    username = username.lower()
+
+    is_added = await db.add_user_if_not_exists(user_id, first_name, username)
     await db.update_username(user_id, username)
+
+    if is_added:
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})",
+                )
+            except:
+                pass
 
     await msg.answer(
         text=f"👋 Привет, <b>{msg.from_user.full_name}</b>",
@@ -44,12 +56,23 @@ async def splited_start(msg: Message, bot: Bot):
 
     user_id = msg.from_user.id
     first_name = msg.from_user.first_name
-    username = msg.from_user.username.lower()
+    username = msg.from_user.username
     if username is None:
         username = "Unknown"
 
-    await db.add_user_if_not_exists(user_id, first_name, username)
+    username = username.lower()
+    is_added = await db.add_user_if_not_exists(user_id, first_name, username)
     await db.update_username(user_id, username)
+
+    if is_added:
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})",
+                )
+            except:
+                pass
 
     project_info = msg.text.split("/start ")[-1]
     project_id = int(project_info.split("_")[-1])

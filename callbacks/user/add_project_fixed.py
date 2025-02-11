@@ -9,7 +9,8 @@ from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 
 from utils.routers import create_router_with_user_middleware
 from utils.json_utils import get_price_per_project
-from utils.time_utils import format_timestamp, get_timestamp
+from utils.time_utils import get_timestamp
+from config import ADMIN_IDS
 
 router = create_router_with_user_middleware()
 
@@ -73,6 +74,14 @@ async def add_fixed_project_process_name(message: Message, state: FSMContext, bo
             duration=30,
             description="Описание тарифа",
         )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=f"Пользователь {message.from_user.id} ({message.from_user.full_name}) добавил проект {project_name}",
+                )
+            except:
+                pass
         await bot.edit_message_text(
             text="🎉 Проект успешно добавлен",
             reply_markup=await get_back_to_main_menu(),
