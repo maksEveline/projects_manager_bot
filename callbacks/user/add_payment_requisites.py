@@ -43,7 +43,7 @@ async def add_payment_requisites_process(message: Message, state: FSMContext, bo
     data = await state.get_data()
     msg_id = data.get("msg_id")
     project_id = data.get("project_id")
-    requisites = message.text
+    requisites = message.html_text
 
     await state.update_data({"requisites": requisites})
 
@@ -73,6 +73,7 @@ async def add_payment_requisites_process(message: Message, state: FSMContext, bo
         chat_id=message.from_user.id,
         message_id=msg_id,
         reply_markup=keyboard,
+        parse_mode="HTML",
     )
 
 

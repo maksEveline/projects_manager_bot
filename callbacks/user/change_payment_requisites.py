@@ -47,7 +47,7 @@ async def change_payment_requisites_process(
     data = await state.get_data()
     msg_id = data.get("msg_id")
     project_id = data.get("project_id")
-    requisites = message.text
+    requisites = message.html_text
 
     await state.update_data({"requisites": requisites})
 
@@ -77,6 +77,7 @@ async def change_payment_requisites_process(
         chat_id=message.from_user.id,
         message_id=msg_id,
         reply_markup=keyboard,
+        parse_mode="HTML",
     )
 
 
@@ -96,6 +97,7 @@ async def confirm_change_payment_requisites(
             chat_id=callback.from_user.id,
             message_id=callback.message.message_id,
             reply_markup=await get_back_to_project_menu(project_id),
+            parse_mode="HTML",
         )
 
     else:
@@ -104,4 +106,5 @@ async def confirm_change_payment_requisites(
             chat_id=callback.from_user.id,
             message_id=callback.message.message_id,
             reply_markup=await get_back_to_project_menu(project_id),
+            parse_mode="HTML",
         )
