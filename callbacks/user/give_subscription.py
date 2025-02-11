@@ -124,8 +124,10 @@ async def give_rate_sub_user_id(message: Message, state: FSMContext, bot: Bot):
         answ_text += f"<b>{chat['name']}({chat['type']})</b> : {chat['link']}\n"
 
         try:
-            await bot.unban_chat_member(chat["id"], user_id)
-            print(f"Пользователь {user_id} разбанен в чате {chat['id']}")
+            chat_member = await bot.get_chat_member(chat["id"], user_id)
+            if chat_member.status == "left" or chat_member.status == "kicked":
+                await bot.unban_chat_member(chat["id"], user_id)
+                print(f"Пользователь {user_id} разбанен в чате {chat['id']}")
         except Exception as e:
             ...
 
