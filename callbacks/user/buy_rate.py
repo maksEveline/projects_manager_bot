@@ -264,7 +264,7 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
             parse_mode="HTML",
         )
 
-    else:
+    elif message.text:
         unique_id = await generate_unique_id()
         await bot.delete_message(message.chat.id, message.message_id)
 
@@ -275,7 +275,7 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
         admin_msg_text += f"Тариф: {rate_info['name']}\n"
         admin_msg_text += f"Цена: {rate_info['price']}$\n"
         admin_msg_text += f"ID запроса: {unique_id}\n"
-
+        admin_msg_text += f"Пруф оплаты: {message.text}\n"
         kb = [
             [
                 InlineKeyboardButton(
