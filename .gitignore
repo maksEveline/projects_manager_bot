@@ -148,7 +148,6 @@ cython_debug/
 /dist/
 
 # custom
-/*.json
 /media/
 
 # env variables

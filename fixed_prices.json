@@ -1,0 +1,22 @@
+[
+    {
+        "count": 1,
+        "price": 10
+    },
+    {
+        "count": 2,
+        "price": 20
+    },
+    {
+        "count": 5,
+        "price": 30
+    },
+    {
+        "count": 10,
+        "price": 40
+    },
+    {
+        "count": 10000,
+        "price": 1337
+    }
+]
