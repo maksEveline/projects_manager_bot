@@ -227,7 +227,9 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
 
         await db.add_payment_request(unique_id, user_id, rate_id)
 
+        user_info = await db.get_user(user_id)
         admin_msg_text = f"Новый запрос на оплату от пользователя {user_id}\n\n"
+        admin_msg_text += f"{user_info['first_name']} (@{user_info['username']})\n"
         admin_msg_text += f"Название проекта: {project_info['name']}\n"
         admin_msg_text += f"Тариф: {rate_info['name']}\n"
         admin_msg_text += f"Цена: {rate_info['price']}$\n"
@@ -270,7 +272,9 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
 
         await db.add_payment_request(unique_id, user_id, rate_id)
 
+        user_info = await db.get_user(user_id)
         admin_msg_text = f"Новый запрос на оплату от пользователя {user_id}\n\n"
+        admin_msg_text += f"Информация о пользователе: {user_info['first_name']} (@{user_info['username']})\n"
         admin_msg_text += f"Название проекта: {project_info['name']}\n"
         admin_msg_text += f"Тариф: {rate_info['name']}\n"
         admin_msg_text += f"Цена: {rate_info['price']}$\n"

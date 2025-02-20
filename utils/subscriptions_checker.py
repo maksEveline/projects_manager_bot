@@ -16,11 +16,19 @@ async def checker_func(bot: Bot):
             if not is_future:
                 project_id = subscription["project_id"]
                 project_chats = await db.get_project_chats_and_channels(project_id)
+                project_info = await db.get_project(project_id)
+                owner_id = project_info["user_id"]
+                user_info = await db.get_user(subscription["user_id"])
+
+                await bot.send_message(
+                    chat_id=owner_id,
+                    text=f"🚫 У пользователя {user_info['first_name']} (@{user_info['username']}) закончилась подписка на проект {project_info['name']}",
+                )
 
                 for chat in project_chats:
                     await bot.ban_chat_member(chat["id"], subscription["user_id"])
                     print(
-                        f"Unsubscribing user {subscription['user_id']} from project {subscription['project_id']}"
+                        f"Unsubscribing user {subscription['user_id']} from project {project_id}"
                     )
 
                 await db.delete_subscription(

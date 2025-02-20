@@ -68,29 +68,38 @@ async def confirm_pay_request(callback: CallbackQuery, bot: Bot):
         disable_web_page_preview=True,
     )
 
+    user_info = await db.get_user(user_id)
     # отправляем сообщение владельцу проекта
     await bot.send_message(
-        text=f"💰 Оплата за {project_info['name']} {rate_info['name']} подтверждена",
+        text=f"💰 Оплата за {project_info['name']} {rate_info['name']} подтверждена\n{user_info['first_name']} @{user_info['username']} id: <code>{user_id}</code>",
         chat_id=callback.message.chat.id,
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
     await db.delete_payment_request(request_id)
-    await bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    await bot.edit_message_reply_markup(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        reply_markup=None,
+    )
 
 
 @router.callback_query(F.data.startswith("cancel_pay_request_"))
 async def cancel_pay_request(callback: CallbackQuery, bot: Bot):
     request_id = callback.data.split("_")[-1]
     payment_request = await db.get_payment_request(int(request_id))
+    user_id = payment_request["user_id"]
+    user_info = await db.get_user(user_id)
+
     await db.delete_payment_request(request_id)
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
 
     await bot.send_message(
         text=f"❌ Ваш запрос на оплату (ID: {request_id}) отменен владельцем проекта",
-        chat_id=payment_request["user_id"],
+        chat_id=user_id,
     )
+
     await bot.send_message(
-        text=f"❌ Запрос на оплату (ID: {request_id}) отменен",
+        text=f"❌ Запрос на оплату (ID: {request_id}) отменен\n{user_info['first_name']} @{user_info['username']} id: <code>{user_id}</code>",
         chat_id=callback.message.chat.id,
     )

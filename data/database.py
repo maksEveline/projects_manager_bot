@@ -465,6 +465,8 @@ class Database:
                 SELECT 
                     u.user_id, 
                     u.balance,
+                    u.username,
+                    u.first_name,
                     u.max_projects,
                     COUNT(DISTINCT p.project_id) as projects_count
                 FROM users u
@@ -479,8 +481,10 @@ class Database:
                     return {
                         "user_id": row[0],
                         "balance": row[1],
-                        "max_projects": row[2],
-                        "projects_count": row[3],
+                        "max_projects": row[4],
+                        "projects_count": row[5],
+                        "first_name": row[3],
+                        "username": row[2],
                     }
                 return None
         except Exception as e:

@@ -1,13 +1,12 @@
 import os
-
+import csv
+import time
 from aiogram import F, Bot
 from aiogram.types import CallbackQuery
 from aiogram.types.input_file import FSInputFile
-
 from keyboards.user.user_inline import get_back_to_project_menu
 from data.database import db
 from config import DURATION_TYPES
-
 from utils.routers import create_router_with_user_middleware
 from utils.time_utils import format_timestamp
 
@@ -17,78 +16,76 @@ router = create_router_with_user_middleware()
 @router.callback_query(F.data.startswith("stats_project_"))
 async def stats_project(callback: CallbackQuery, bot: Bot):
     project_id = callback.data.split("stats_project_")[-1]
+    project_info = await db.get_project(project_id)
+    project_name = project_info["name"]
     rates = await db.get_rates(project_id)
     active_subscriptions = await db.get_active_subscriptions()
-
-    stats_text = "📊 Статистика по доходам проекта:\n\n"
-
-    total_income = 0
-    members_data = []
-
-    for rate in rates:
+    file_path = "members.csv"
+    headers = [
+        "Участник (имя юзернейм айди)",
+        "конец",
+        "количество дней осталось",
+        "Имя тарифа",
+        "цена тарифа",
+    ]
+    rows = []
+    now_ts = time.time()
+    unit_map = {
+        "день": 1,
+        "дня": 1,
+        "дней": 1,
+        "неделя": 7,
+        "недели": 7,
+        "недель": 7,
+        "месяц": 30,
+        "месяца": 30,
+        "месяцев": 30,
+        "год": 365,
+        "года": 365,
+        "лет": 365,
+    }
+    rate_map = {rate["rate_id"]: rate for rate in rates}
+    for sub in active_subscriptions:
+        if int(sub["project_id"]) != int(project_id):
+            continue
+        rate_id = sub["rate_id"]
+        if rate_id not in rate_map:
+            continue
+        rate = rate_map[rate_id]
         dur_type = DURATION_TYPES[rate["duration_type"]]
-        purchases = await db.get_purchases_by_rate(rate["rate_id"])
-        rate_data = [f"{rate['name']} {rate['duration']} {dur_type}"]
-
-        if purchases:
-            total_purchases = len(purchases)
-            rate_income = total_purchases * rate["price"]
-            total_income += rate_income
-
-            stats_text += (
-                f"📃 {rate['name']} {rate['duration']} {dur_type} ({rate['price']}$)\n"
-            )
-            stats_text += f"👥 Участников: {total_purchases}\n"
-            stats_text += f"💰 Доход: {rate_income}$\n"
-
-            # for purchase in purchases:
-            #     username = (
-            #         purchase["username"] if purchase["username"] else "Нет username"
-            #     )
-            #     rate_data.append(
-            #         f"{purchase['first_name']} (@{username if purchase['username'] else 'Нет username'}) ID: {purchase['user_id']} | {purchase['date']}"
-            #     )
-            for sub in active_subscriptions:
-                if int(sub["project_id"]) == int(project_id):
-                    if int(sub["rate_id"]) == int(rate["rate_id"]):
-                        username = await db.get_username_by_id(sub["user_id"])
-                        first_name = await db.get_firstname_by_userid(sub["user_id"])
-                        rate_data.append(
-                            f"{first_name} (@{username if username else 'Нет username'}) ID: {sub['user_id']} | {format_timestamp(float(sub['date']))}"
-                        )
-            stats_text += "\n"
-        else:
-            stats_text += (
-                f"📃 {rate['name']} {rate['duration']} {dur_type} ({rate['price']}$)\n"
-            )
-            stats_text += f"👥 Участников: 0\n"
-            stats_text += f"💰 Доход: 0$\n\n"
-        members_data.append("\n".join(rate_data))
-
-    stats_text += f"💸 Общий доход: {total_income}$"
-
-    file_content = "\n\n".join(members_data)
-    file_path = "members.txt"
-
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(file_content)
-
-    file = FSInputFile(file_path)
-
+        multiplier = unit_map.get(dur_type.lower(), 1)
+        sub_start = float(sub["date"])
+        end_ts = sub_start + rate["duration"] * multiplier * 86400
+        days_left = int((end_ts - now_ts) // 86400)
+        username = await db.get_username_by_id(sub["user_id"])
+        first_name = await db.get_firstname_by_userid(sub["user_id"])
+        participant = f"{first_name} (@{username if username else 'Нет username'}) ID: {sub['user_id']}"
+        row = [
+            participant,
+            format_timestamp(end_ts),
+            str(days_left),
+            rate["name"],
+            str(rate["price"]),
+        ]
+        rows.append(row)
+    with open(file_path, "w", encoding="utf-8", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([f"Проект: {project_name}"])
+        writer.writerow([])
+        writer.writerow(headers)
+        writer.writerows(rows)
     await bot.send_document(
         chat_id=callback.from_user.id,
-        document=file,
+        document=FSInputFile(file_path),
         caption="Список участников",
     )
-
     await bot.edit_message_text(
-        text=stats_text,
+        text="📊 Статистика по доходам проекта",
         chat_id=callback.from_user.id,
         message_id=callback.message.message_id,
         reply_markup=await get_back_to_project_menu(project_id),
         parse_mode="HTML",
     )
-
     try:
         os.remove(file_path)
     except Exception as e:

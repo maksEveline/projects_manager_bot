@@ -32,9 +32,9 @@ async def users_subs_checker_func(bot: Bot):
 
                 current_time = get_timestamp(0)
                 time_left = float(end_date) - float(current_time)
-                print(
-                    f"User: {user_id}, Project: {project_id}, Rate: {rate_id}, Time left: {time_left}"
-                )
+                # print(
+                #     f"User: {user_id}, Project: {project_id}, Rate: {rate_id}, Time left: {time_left}"
+                # )
 
                 if duration_time >= 72:
                     # Проверка для 3 дней
