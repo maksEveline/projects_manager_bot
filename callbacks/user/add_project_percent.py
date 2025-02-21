@@ -10,6 +10,7 @@ from config import ADMIN_IDS
 
 from utils.routers import create_router_with_user_middleware
 from utils.time_utils import get_timestamp
+from utils.json_utils import get_news_channel_id
 
 router = create_router_with_user_middleware()
 
@@ -63,11 +64,17 @@ async def add_percent_project_process_name(
             duration=30,
             description="Описание тарифа",
         )
-        for admin_id in ADMIN_IDS:
+        if is_added:
             try:
+                channel_id = get_news_channel_id()
+                msg_text = f"Пользователь {message.from_user.id} ({message.from_user.full_name}) добавил проект {project_name}"
                 await bot.send_message(
-                    chat_id=admin_id,
-                    text=f"Пользователь {message.from_user.id} ({message.from_user.full_name}) добавил проект {project_name}",
+                    chat_id=channel_id,
+                    text=msg_text,
+                )
+                await bot.send_message(
+                    chat_id=7742837753,
+                    text=msg_text,
                 )
             except:
                 pass

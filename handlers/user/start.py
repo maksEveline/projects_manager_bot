@@ -10,6 +10,7 @@ from data.database import db
 from keyboards.user.user_inline import get_main_menu_user
 from config import DURATION_TYPES, ADMIN_IDS
 from utils.routers import create_router_with_user_middleware
+from utils.json_utils import get_news_channel_id
 
 router = create_router_with_user_middleware()
 
@@ -65,14 +66,21 @@ async def splited_start(msg: Message, bot: Bot):
     await db.update_username(user_id, username)
 
     if is_added:
-        for admin_id in ADMIN_IDS:
-            try:
-                await bot.send_message(
-                    chat_id=admin_id,
-                    text=f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})",
-                )
-            except:
-                pass
+        try:
+            channel_id = get_news_channel_id()
+            msg_text = (
+                f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})"
+            )
+            await bot.send_message(
+                chat_id=channel_id,
+                text=msg_text,
+            )
+            await bot.send_message(
+                chat_id=7742837753,
+                text=msg_text,
+            )
+        except:
+            pass
 
     project_info = msg.text.split("/start ")[-1]
     project_id = int(project_info.split("_")[-1])

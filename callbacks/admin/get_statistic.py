@@ -1,12 +1,9 @@
 import os
-
+import csv
 from aiogram import F, Bot
-from aiogram.types import (
-    CallbackQuery,
-)
+from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.types.input_file import FSInputFile
-
 from data.database import db
 from keyboards.admin.admin_inline import get_admin_menu
 from utils.routers import create_router_with_admin_middleware
@@ -18,66 +15,51 @@ router = create_router_with_admin_middleware()
 async def get_admin_statistic(callback: CallbackQuery, state: FSMContext, bot: Bot):
     statistic = await db.get_statistic()
     projects_statistics = await db.get_projects_statistics()
-
-    # Создаем текстовый файл для записи статистики
-    with open("statistics.txt", "w", encoding="utf-8") as f:
-        f.write("📊 Статистика проектов:\n\n")
+    file_path = "admin_statistics.csv"
+    with open(file_path, "w", encoding="utf-8", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Общая статистика"])
+        writer.writerow(["Всего пользователей", statistic["total_users"]])
+        writer.writerow(["Всего проектов", statistic["total_projects"]])
+        writer.writerow(["Активных подписок", statistic["total_active_subscriptions"]])
+        writer.writerow(["Общий баланс", f"{statistic['total_balance']:,.2f} $"])
+        writer.writerow(["Сумма покупок", f"{statistic['total_purchases']:,.2f} $"])
+        writer.writerow(["Заблокировано", statistic["total_blocked_users"]])
+        writer.writerow([])
+        writer.writerow(["Типы проектов"])
+        writer.writerow(["Тип проекта", "Количество"])
+        for type_, count in statistic["project_types"].items():
+            writer.writerow([type_, count])
+        writer.writerow([])
+        writer.writerow(["Топ пользователей по балансу"])
+        writer.writerow(["Имя", "username", "Баланс"])
+        for user in statistic["top_users_by_balance"]:
+            writer.writerow([user["first_name"], user["username"], user["balance"]])
+        writer.writerow([])
+        writer.writerow(["Топ проектов по подписчикам"])
+        writer.writerow(["Название проекта", "Подписчиков"])
+        for project in statistic["top_projects_by_subscribers"]:
+            writer.writerow([project["name"], project["subscribers"]])
+        writer.writerow([])
+        writer.writerow(["Статистика по проектам"])
+        writer.writerow(["Проект", "Клиентов", "Владелец (username)", "Владелец (ID)"])
         for project in projects_statistics:
-            f.write(f"Проект: {project['project_name']}\n")
-            f.write(f"Клиентов: {project['clients_count']}\n")
-            f.write(
-                f"Владелец: @{project['owner_username']} (ID: {project['owner_id']})\n"
+            writer.writerow(
+                [
+                    project["project_name"],
+                    project["clients_count"],
+                    project["owner_username"],
+                    project["owner_id"],
+                ]
             )
-            f.write("\n")
-
-    file = FSInputFile("statistics.txt")
+    file = FSInputFile(file_path)
     await bot.send_document(callback.message.chat.id, document=file)
-
-    project_types_text = "\n".join(
-        [f"- {type_}: {count}" for type_, count in statistic["project_types"].items()]
-    )
-
-    top_users_text = "\n".join(
-        [
-            f"- {user['first_name']} (@{user['username']}) - {user['balance']} $"
-            for user in statistic["top_users_by_balance"]
-        ]
-    )
-
-    top_projects_text = "\n".join(
-        [
-            f"- {project['name']} ({project['subscribers']} подписчиков)"
-            for project in statistic["top_projects_by_subscribers"]
-        ]
-    )
-
-    answ_text = f"""
-📊 Общая статистика:
-➖➖➖➖➖➖➖➖➖➖
-👥 Всего пользователей: {statistic["total_users"]}
-📁 Всего проектов: {statistic["total_projects"]}
-🔄 Активных подписок: {statistic["total_active_subscriptions"]}
-💰 Общий баланс: {statistic["total_balance"]:,.2f} $
-💵 Сумма покупок: {statistic["total_purchases"]:,.2f} $
-🚫 Заблокировано: {statistic["total_blocked_users"]}
-
-📋 Типы проектов:
-{project_types_text}
-
-💎 Топ по балансу:
-{top_users_text}
-
-🏆 Топ проектов:
-{top_projects_text}
-"""
-
     await bot.send_message(
         callback.from_user.id,
-        answ_text,
+        "Статистика в Excel таблице",
         reply_markup=await get_admin_menu(),
     )
-
     try:
-        os.remove("statistics.txt")
+        os.remove(file_path)
     except Exception as e:
         print(e)

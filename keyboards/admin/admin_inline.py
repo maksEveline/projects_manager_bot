@@ -45,5 +45,10 @@ async def get_admin_menu() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="Сделать бекап", callback_data="make_backup"),
         ],
+        [
+            InlineKeyboardButton(
+                text="Канал с уведомлениями", callback_data="update_news_channel"
+            ),
+        ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)

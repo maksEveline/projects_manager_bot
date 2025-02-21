@@ -92,7 +92,12 @@ async def cancel_pay_request(callback: CallbackQuery, bot: Bot):
     user_info = await db.get_user(user_id)
 
     await db.delete_payment_request(request_id)
-    await bot.delete_message(callback.message.chat.id, callback.message.message_id)
+
+    await bot.edit_message_reply_markup(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        reply_markup=None,
+    )
 
     await bot.send_message(
         text=f"❌ Ваш запрос на оплату (ID: {request_id}) отменен владельцем проекта",

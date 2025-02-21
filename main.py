@@ -55,6 +55,7 @@ from callbacks.admin import (
     change_update_channel_link,
     open_backups_menu,
     make_backup,
+    update_news_channel,
 )
 from data.database import db
 from config import TOKEN
@@ -125,6 +126,7 @@ async def main():
         transfer_project.router,
         open_backups_menu.router,
         make_backup.router,
+        update_news_channel.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)

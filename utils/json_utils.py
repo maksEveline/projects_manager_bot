@@ -72,3 +72,16 @@ def update_project_prices(count: int, price: int) -> bool:
     except Exception as ex:
         print(ex)
         return False
+
+
+def get_news_channel_id():
+    with open("settings.json", "r") as file:
+        return json.load(file)["update_channel_id"]
+
+
+def set_news_channel_id(id: str):
+    with open("settings.json", "r") as file:
+        data = json.load(file)
+    data["update_channel_id"] = id
+    with open("settings.json", "w") as file:
+        json.dump(data, file)

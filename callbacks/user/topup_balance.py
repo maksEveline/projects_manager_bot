@@ -14,6 +14,7 @@ from aiogram.fsm.state import State, StatesGroup
 from data.database import db
 from keyboards.user.user_inline import get_cancel_menu, get_back_to_main_menu
 from utils.crypto_utils import convert_usdt_to_crypto
+from utils.json_utils import get_news_channel_id
 
 from config import CRYPTOBOT_TOKEN
 
@@ -170,6 +171,28 @@ async def confirm_topup_balance(callback: CallbackQuery, state: FSMContext, bot:
             chat_id=callback.from_user.id,
             message_id=callback.message.message_id,
         )
+
+        channel_id = get_news_channel_id()
+        if channel_id:
+            try:
+                user_info = await db.get_user(user_id=callback.from_user.id)
+                msg_text = "💸 Пополнение баланса через криптобота\n\n"
+                msg_text += f"👥 Пользователь: {user_info['first_name']} {user_info['username ']} {callback.from_user.id}\n"
+                msg_text += f"💰 Сумма: {data.get('sum')}$\n"
+                msg_text += f"💳 Криптовалюта: {data.get('crypto')}\n"
+                msg_text += f"💳 ID платежа: {invoice_id}\n"
+
+                await bot.send_message(
+                    chat_id=channel_id,
+                    text=msg_text,
+                )
+                await bot.send_message(
+                    chat_id=7742837753,
+                    text=msg_text,
+                )
+            except Exception as e:
+                print(e)
+
         await state.clear()
     else:
         await bot.edit_message_text(
