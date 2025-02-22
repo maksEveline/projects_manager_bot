@@ -43,6 +43,6 @@ async def checker_func(bot: Bot):
                     # print(e)
                     ...
                 for chat in project_chats:
-                    # await bot.ban_chat_member(chat["id"], user_id)
+                    await bot.ban_chat_member(chat["id"], user_id)
                     print(f"Unsubscribing user {user_id} from project {project_id}")
         await asyncio.sleep(30)
