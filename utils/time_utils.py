@@ -1,3 +1,4 @@
+import pytz
 from datetime import datetime, timedelta
 
 
@@ -66,3 +67,8 @@ def format_hours(hours):
             )
         )
         return f"{hours} {hour_word}"
+
+
+def get_kiev_time():
+    kiev_tz = pytz.timezone("Europe/Kiev")
+    return datetime.now(kiev_tz).strftime("%Y-%m-%d %H:%M:%S")

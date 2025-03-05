@@ -23,3 +23,6 @@ def convert_usdt_to_crypto(amount_usdt, target_crypto):
         return amount_usdt / crypto_price_in_usd
     else:
         raise ValueError("Не удалось получить данные о цене выбранной криптовалюты.")
+
+
+# print(convert_usdt_to_crypto(1000, "BTC"))

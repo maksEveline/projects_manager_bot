@@ -105,7 +105,12 @@ async def confirm_buy_rate(callback: CallbackQuery, bot: Bot):
         formatted_time = format_timestamp(sub_timestamp)
 
         await db.add_active_subscriptions(
-            user_id, rate_info["project_id"], rate_id, sub_timestamp, hourses=sub_time
+            user_id,
+            rate_info["project_id"],
+            rate_id,
+            sub_timestamp,
+            hourses=sub_time,
+            payment="cryptobot",
         )
 
         dirrty_price = rate_info["price"]
@@ -218,10 +223,12 @@ async def img_proof(message: Message, state: FSMContext, bot: Bot):
     if message.photo:
         unique_id = await generate_unique_id()
         photo = message.photo[-1]
+
         file = await bot.get_file(photo.file_id)
         if not os.path.exists(DOWNLOADS_DIR):
             os.makedirs(DOWNLOADS_DIR)
         file_path = os.path.join(DOWNLOADS_DIR, f"{unique_id}.jpg")
+
         await bot.download_file(file.file_path, file_path)
         await bot.delete_message(message.chat.id, message.message_id)
 

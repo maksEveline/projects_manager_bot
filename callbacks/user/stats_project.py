@@ -25,6 +25,7 @@ async def stats_project(callback: CallbackQuery, bot: Bot):
 
     headers = [
         "Участник (имя юзернейм айди)",
+        "Начало",
         "конец",
         "количество дней осталось",
         "Имя тарифа",
@@ -56,9 +57,6 @@ async def stats_project(callback: CallbackQuery, bot: Bot):
             continue
 
         rate = rate_map[rate_id]
-        dur_type = DURATION_TYPES[rate["duration_type"]]
-        multiplier = unit_map.get(dur_type.lower(), 1)
-        sub_start = float(sub["date"])
         end_ts = float(sub["date"])
         days_left = int((end_ts - now_ts) // 86400)
         username = await db.get_username_by_id(sub["user_id"])
@@ -67,6 +65,7 @@ async def stats_project(callback: CallbackQuery, bot: Bot):
 
         row = [
             participant,
+            sub["start_date"],
             format_timestamp(end_ts),
             str(days_left),
             rate["name"],

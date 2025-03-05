@@ -71,12 +71,16 @@ async def splited_start(msg: Message, bot: Bot):
             msg_text = (
                 f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})"
             )
+            for admin_id in ADMIN_IDS:
+                try:
+                    await bot.send_message(
+                        chat_id=admin_id,
+                        text=f"👤 Новый пользователь: {msg.from_user.full_name} ({msg.from_user.id})",
+                    )
+                except:
+                    pass
             await bot.send_message(
                 chat_id=channel_id,
-                text=msg_text,
-            )
-            await bot.send_message(
-                chat_id=7742837753,
                 text=msg_text,
             )
         except:

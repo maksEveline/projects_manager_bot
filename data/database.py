@@ -1,7 +1,7 @@
 import aiosqlite
 
 from config import DB_PATH
-from utils.time_utils import get_timestamp
+from utils.time_utils import get_timestamp, get_kiev_time
 
 
 class Database:
@@ -101,7 +101,9 @@ class Database:
                     user_id INTEGER,
                     project_id INTEGER,
                     rate_id INTEGER,
-                    date TEXT
+                    date TEXT,
+                    start_date TEXT,
+                    purchase_type TEXT
                 )
             """
             )
@@ -791,7 +793,13 @@ class Database:
             return False
 
     async def add_active_subscriptions(
-        self, user_id: int, project_id: int, rate_id: int, date: str, hourses: int = 0
+        self,
+        user_id: int,
+        project_id: int,
+        rate_id: int,
+        date: str,
+        hourses: int = 0,
+        payment: str = "undefined",
     ) -> bool:
         """
         Добавляет или обновляет информацию о подписке в таблице active_subscriptions.
@@ -826,13 +834,14 @@ class Database:
                 (str(new_date), user_id, project_id, rate_id),
             )
         else:
-            # если подписки нет- создаем новую
+            # если подписки нет - создаем новую
+            now_time = get_kiev_time()
             await self.db.execute(
                 """
-                INSERT INTO active_subscriptions (user_id, project_id, rate_id, date)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO active_subscriptions (user_id, project_id, rate_id, date, start_date, purchase_type)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, project_id, rate_id, date),
+                (user_id, project_id, rate_id, date, now_time, payment),
             )
 
         await self.db.commit()
